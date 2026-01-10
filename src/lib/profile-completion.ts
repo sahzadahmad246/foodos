@@ -1,5 +1,5 @@
 // Calculate restaurant profile completion percentage
-// Only counts essential input fields for going online
+// Only counts essential fields for display purposes
 export function calculateProfileCompletion(restaurant: {
     name?: string | null
     description?: string | null
@@ -15,7 +15,7 @@ export function calculateProfileCompletion(restaurant: {
     opening_time?: string | null
     closing_time?: string | null
 } | null): { percentage: number; missing: string[] } {
-    // Only essential fields for going online
+    // All fields for percentage display
     const fields = [
         { name: 'Restaurant Name', filled: !!restaurant.name },
         { name: 'Description', filled: !!restaurant.description },
@@ -45,6 +45,30 @@ export function calculateProfileCompletion(restaurant: {
     return { percentage, missing }
 }
 
+// Check if restaurant can go online - only requires essential data
+export function canGoOnline(restaurant: {
+    name?: string | null
+    phone?: string | null
+    address_line1?: string | null
+    city?: string | null
+}): { allowed: boolean; missing: string[] } {
+    // Only TRULY required fields to go online
+    const required = [
+        { name: 'Restaurant Name', filled: !!restaurant.name },
+        { name: 'Phone Number', filled: !!restaurant.phone },
+        { name: 'Address', filled: !!restaurant.address_line1 },
+        { name: 'City', filled: !!restaurant.city },
+    ]
+
+    const missing: string[] = []
+    required.forEach(field => {
+        if (!field.filled) missing.push(field.name)
+    })
+
+    return { allowed: missing.length === 0, missing }
+}
+
+// Legacy function - kept for compatibility
 export function isProfileComplete(percentage: number): boolean {
     return percentage === 100
 }

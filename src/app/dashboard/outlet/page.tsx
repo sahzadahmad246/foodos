@@ -25,7 +25,7 @@ import { EditDeliveryDialog } from '@/components/dashboard/outlet/edit-delivery'
 import { EditOperatingHoursDialog } from '@/components/dashboard/outlet/edit-operating-hours'
 import { ToggleSetting } from '@/components/dashboard/outlet/toggle-setting'
 import { ImageUploader } from '@/components/dashboard/outlet/image-uploader'
-import { calculateProfileCompletion, isProfileComplete } from '@/lib/profile-completion'
+import { calculateProfileCompletion, canGoOnline } from '@/lib/profile-completion'
 
 export const dynamic = 'force-dynamic'
 
@@ -87,7 +87,7 @@ export default async function OutletPage() {
 
     const settingsData = settings || {}
     const { percentage } = calculateProfileCompletion(restaurant, settingsData)
-    const profileComplete = isProfileComplete(percentage)
+    const { allowed: canGoOnlineStatus } = canGoOnline(restaurant)
 
     const formatTime = (time: string) => {
         if (!time) return 'Not set'
@@ -265,7 +265,7 @@ export default async function OutletPage() {
                         enabled={restaurant.is_active}
                         isRestaurantField={true}
                         requiresProfileComplete={true}
-                        profileComplete={profileComplete}
+                        profileComplete={canGoOnlineStatus}
                     />
                     <ToggleSetting
                         restaurantId={restaurant.id}

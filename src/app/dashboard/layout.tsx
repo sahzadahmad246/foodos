@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { DashboardSidebar } from '@/components/dashboard/sidebar'
 import { DashboardHeader } from '@/components/dashboard/header'
-import { calculateProfileCompletion, isProfileComplete } from '@/lib/profile-completion'
+import { canGoOnline } from '@/lib/profile-completion'
 
 export default async function DashboardLayout({
     children,
@@ -28,9 +28,7 @@ export default async function DashboardLayout({
         redirect('/onboarding')
     }
 
-    const settings = restaurant.restaurant_settings?.[0] || null
-    const { percentage } = calculateProfileCompletion(restaurant, settings)
-    const profileComplete = isProfileComplete(percentage)
+    const { allowed: canGoOnlineStatus } = canGoOnline(restaurant)
 
     return (
         <div className="flex min-h-screen bg-muted/40 overflow-x-hidden">
@@ -39,7 +37,7 @@ export default async function DashboardLayout({
                 <DashboardHeader
                     user={user}
                     restaurant={restaurant}
-                    profileComplete={profileComplete}
+                    profileComplete={canGoOnlineStatus}
                 />
                 <main className="flex-1 overflow-x-hidden p-4 md:p-6">
                     {children}
