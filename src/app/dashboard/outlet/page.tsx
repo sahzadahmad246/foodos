@@ -26,6 +26,7 @@ import { EditOperatingHoursDialog } from "@/components/dashboard/outlet/edit-ope
 import { ToggleSetting } from "@/components/dashboard/outlet/toggle-setting"
 import { ImageUploader } from "@/components/dashboard/outlet/image-uploader"
 import { EditPaymentKeysDialog } from "@/components/dashboard/outlet/edit-payment-keys"
+import { OnlinePaymentToggle } from "@/components/dashboard/outlet/online-payment-toggle"
 import { calculateProfileCompletion, canGoOnline } from "@/lib/profile-completion"
 
 export const dynamic = "force-dynamic"
@@ -42,7 +43,7 @@ function Section({
     action?: React.ReactNode
 }) {
     return (
-        <section className="bg-card border border-border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+        <section className="relative bg-card border border-border rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden">
             <div className="flex items-center justify-between px-4 sm:px-6 py-4 bg-muted/40 border-b border-border">
                 <div className="flex items-center gap-2 min-w-0">
                     <Icon className="h-5 w-5 text-primary flex-shrink-0" />
@@ -50,7 +51,16 @@ function Section({
                 </div>
                 {action && <div className="ml-2 flex-shrink-0">{action}</div>}
             </div>
-            <div className="px-4 sm:px-6 py-5">{children}</div>
+            <div className="relative px-4 sm:px-6 py-5">
+                {children}
+            </div>
+            {/* Bottom glow - CRED style */}
+            <div
+                className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[70%] h-12 blur-2xl"
+                style={{
+                    background: 'rgba(117, 242, 190, 0.4)',
+                }}
+            />
         </section>
     )
 }
@@ -319,12 +329,11 @@ export default async function OutletPage() {
                         description="Accept cash payments"
                         enabled={settingsData.cod_enabled ?? true}
                     />
-                    <ToggleSetting
+                    <OnlinePaymentToggle
                         restaurantId={restaurant.id}
-                        settingName="online_payment_enabled"
-                        label="Online Payments"
-                        description="UPI, cards, wallets"
                         enabled={settingsData.online_payment_enabled ?? false}
+                        hasRazorpayKeys={!!settingsData.razorpay_key_id}
+                        razorpayKeyId={settingsData.razorpay_key_id}
                     />
                 </div>
 

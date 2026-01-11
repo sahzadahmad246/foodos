@@ -100,19 +100,77 @@ create table if not exists categories (
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- Table: menu_items
+-- Table: menu_items (World-class schema)
 create table if not exists menu_items (
   id uuid default uuid_generate_v4() primary key,
   restaurant_id uuid references restaurants(id) on delete cascade not null,
   category_id uuid references categories(id) on delete set null,
+  
+  -- Basic Info
   name text not null,
   description text,
+  short_description text, -- For quick display
+  
+  -- Pricing
   price decimal(10, 2) not null,
+  compare_at_price decimal(10, 2), -- Original price for discounts
+  cost_price decimal(10, 2), -- For profit tracking
+  
+  -- Images
   image_url text,
+  gallery_urls text[], -- Multiple images
+  video_url text, -- Item video
+  
+  -- Classification
   is_veg boolean default true,
   is_available boolean default true,
-  preparation_time_mins int,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+  is_featured boolean default false, -- Show in featured section
+  is_bestseller boolean default false,
+  is_new boolean default false,
+  is_spicy boolean default false,
+  spice_level int default 0, -- 0-5 scale
+  
+  -- Variants (e.g., Small/Medium/Large)
+  has_variants boolean default false,
+  variants jsonb default '[]', -- [{name: "Small", price: 99}, {name: "Large", price: 149}]
+  
+  -- Addons/Extras
+  has_addons boolean default false,
+  addon_groups jsonb default '[]', -- [{group: "Toppings", items: [{name: "Cheese", price: 30}]}]
+  
+  -- Nutritional Info
+  calories int,
+  protein_grams decimal(5, 1),
+  carbs_grams decimal(5, 1),
+  fat_grams decimal(5, 1),
+  fiber_grams decimal(5, 1),
+  
+  -- Dietary & Allergens
+  allergens text[], -- ['nuts', 'dairy', 'gluten']
+  dietary_tags text[], -- ['gluten-free', 'keto', 'halal', 'jain']
+  
+  -- Serving Info
+  serves int default 1, -- Serves X people
+  portion_size text, -- "250g", "2 pcs"
+  
+  -- Time & Availability
+  preparation_time_mins int default 20,
+  available_from time, -- Available only after this time
+  available_until time, -- Available only until this time
+  available_days text[] default '{"Mon","Tue","Wed","Thu","Fri","Sat","Sun"}',
+  
+  -- Inventory
+  track_inventory boolean default false,
+  stock_quantity int,
+  low_stock_alert int default 5,
+  
+  -- SEO & Display
+  tags text[], -- ['popular', 'must-try', 'chef-special']
+  sort_order int default 0,
+  
+  -- Metadata
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
 -- Table: riders
