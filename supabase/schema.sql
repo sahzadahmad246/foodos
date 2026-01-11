@@ -75,6 +75,8 @@ create table if not exists restaurant_settings (
   -- Payment Settings
   cod_enabled boolean default true,
   online_payment_enabled boolean default false,
+  razorpay_key_id text,
+  razorpay_key_secret_encrypted text,
   -- Timing
   opening_time time default '09:00',
   closing_time time default '22:00',
