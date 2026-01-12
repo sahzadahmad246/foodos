@@ -2,15 +2,19 @@
 
 import { User } from '@supabase/supabase-js'
 import { usePathname } from 'next/navigation'
+import Link from 'next/link'
+import { ExternalLink } from 'lucide-react'
 import { UserDropdown } from '@/components/user-dropdown'
 import { MobileSidebar, getPageTitle } from '@/components/dashboard/sidebar'
 import { OnlineToggle } from '@/components/dashboard/online-toggle'
+import { Button } from '@/components/ui/button'
 
 interface HeaderProps {
     user: User
     restaurant: {
         id: string
         name: string
+        slug: string
         logo_url: string | null
         is_active: boolean
     }
@@ -27,7 +31,18 @@ export function DashboardHeader({ user, restaurant, profileComplete }: HeaderPro
                 <MobileSidebar restaurant={restaurant} />
                 <h1 className="text-lg font-semibold">{pageTitle}</h1>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 md:gap-4">
+                <Button
+                    asChild
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                >
+                    <Link href={`/r/${restaurant.slug}`} target="_blank">
+                        <ExternalLink className="h-4 w-4" />
+                        <span className="hidden sm:inline">View Menu</span>
+                    </Link>
+                </Button>
                 <OnlineToggle
                     restaurantId={restaurant.id}
                     isActive={restaurant.is_active}

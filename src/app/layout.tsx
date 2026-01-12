@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { TopLoader } from "@/components/top-loader";
+import { QueryProvider } from "@/providers/query-provider";
 import "leaflet/dist/leaflet.css";
 import "./globals.css";
 
@@ -31,7 +32,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <TopLoader />
-        {children}
+        <QueryProvider>
+          {children}
+        </QueryProvider>
         <Toaster richColors position="top-center" />
       </body>
     </html>
