@@ -20,7 +20,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { MoreVertical, Pencil, Trash2, ChevronDown, ChevronRight, Loader2 } from 'lucide-react'
+import { MoreVertical, Pencil, Trash2, ChevronDown, ChevronRight, Loader2, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { deleteCategory, toggleCategoryActive } from '@/app/dashboard/menu/actions'
 
@@ -38,9 +38,10 @@ interface CategoryCardProps {
     itemCount: number
     children?: React.ReactNode
     onEdit?: () => void
+    onAddItem?: () => void
 }
 
-export function CategoryCard({ category, itemCount, children, onEdit }: CategoryCardProps) {
+export function CategoryCard({ category, itemCount, children, onEdit, onAddItem }: CategoryCardProps) {
     const router = useRouter()
     const [isExpanded, setIsExpanded] = useState(true)
     const [isPending, startTransition] = useTransition()
@@ -73,10 +74,10 @@ export function CategoryCard({ category, itemCount, children, onEdit }: Category
 
     return (
         <>
-            <div className={`border rounded-lg bg-card overflow-hidden ${!category.is_active ? 'opacity-60' : ''}`}>
+            <div className={`border sm:rounded-lg bg-card overflow-hidden ${!category.is_active ? 'opacity-60' : ''}`}>
                 {/* Header */}
                 <div
-                    className="flex items-center justify-between px-4 py-3 bg-muted/40 cursor-pointer"
+                    className="flex items-center justify-between px-4 py-3 bg-muted/50 cursor-pointer"
                     onClick={() => setIsExpanded(!isExpanded)}
                 >
                     <div className="flex items-center gap-3 min-w-0">
@@ -109,6 +110,10 @@ export function CategoryCard({ category, itemCount, children, onEdit }: Category
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={onAddItem}>
+                                    <Plus className="h-4 w-4 mr-2" />
+                                    Add Item to {category.name}
+                                </DropdownMenuItem>
                                 <DropdownMenuItem onClick={onEdit}>
                                     <Pencil className="h-4 w-4 mr-2" />
                                     Edit

@@ -61,8 +61,7 @@ export function AddCategoryDialog({ trigger }: AddCategoryDialogProps) {
   const defaultTrigger = (
     <Button size="sm" className="gap-1.5 w-full sm:w-auto">
       <FolderPlus className="h-4 w-4" />
-      <span className="hidden sm:inline">Add Category</span>
-      <span className="sm:hidden">Add</span>
+      Category
     </Button>
   )
 

@@ -1,14 +1,26 @@
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
-import { UtensilsCrossed, FolderOpen } from "lucide-react"
+import { FolderOpen } from "lucide-react"
+import { MenuHeader } from "@/components/dashboard/menu/menu-header"
 import { AddCategoryDialog } from "@/components/dashboard/menu/add-category-dialog"
-import { AddItemDialog } from "@/components/dashboard/menu/add-item-dialog"
-import { CategoryCard } from "@/components/dashboard/menu/category-card"
+import { CategoriesList } from "@/components/dashboard/menu/categories-list"
 import { MenuItemCard } from "@/components/dashboard/menu/menu-item-card"
+import { AddItemDialog } from "@/components/dashboard/menu/add-item-dialog"
 
 export const dynamic = "force-dynamic"
 
-export default async function MenuPage() {
+interface SearchParams {
+    search?: string
+    veg?: string
+    nonveg?: string
+    spicy?: string
+    bestseller?: string
+    featured?: string
+    available?: string
+}
+
+export default async function MenuPage({ searchParams: searchParamsPromise }: { searchParams: Promise<SearchParams> }) {
+    const searchParams = await searchParamsPromise
     const supabase = await createClient()
     const {
         data: { user },
@@ -33,32 +45,63 @@ export default async function MenuPage() {
         .order("sort_order", { ascending: true })
 
     const allCategories = categories || []
-    const allItems = menuItems || []
-    const uncategorizedItems = allItems.filter((item) => !item.category_id)
-    const getItemsForCategory = (categoryId: string) => {
-        return allItems.filter((item) => item.category_id === categoryId)
+    let allItems = menuItems || []
+
+    // Apply server-side filters
+    const searchQuery = searchParams.search?.toLowerCase()
+
+    if (searchQuery) {
+        allItems = allItems.filter(item =>
+            item.name.toLowerCase().includes(searchQuery) ||
+            item.description?.toLowerCase().includes(searchQuery)
+        )
     }
 
-    const totalItems = allItems.length
-    const availableItems = allItems.filter((i) => i.is_available).length
+    // Veg/Non-veg filter (OR condition if both selected)
+    const vegSelected = searchParams.veg === 'true'
+    const nonvegSelected = searchParams.nonveg === 'true'
+
+    if (vegSelected && nonvegSelected) {
+        // Show all items (both veg and non-veg)
+        // No filter needed
+    } else if (vegSelected) {
+        allItems = allItems.filter(item => item.is_veg === true)
+    } else if (nonvegSelected) {
+        allItems = allItems.filter(item => item.is_veg === false)
+    }
+
+    if (searchParams.spicy === 'true') {
+        allItems = allItems.filter(item => item.is_spicy === true)
+    }
+
+    if (searchParams.bestseller === 'true') {
+        allItems = allItems.filter(item => item.is_bestseller === true)
+    }
+
+    if (searchParams.featured === 'true') {
+        allItems = allItems.filter(item => item.is_featured === true)
+    }
+
+    if (searchParams.available === 'true') {
+        allItems = allItems.filter(item => item.is_available === true)
+    }
+
+    const uncategorizedItems = allItems.filter((item) => !item.category_id)
+
+    // Check if we have any active filters or search
+    const hasActiveFilters = Boolean(
+        searchQuery ||
+        searchParams.veg ||
+        searchParams.nonveg ||
+        searchParams.spicy ||
+        searchParams.bestseller ||
+        searchParams.featured ||
+        searchParams.available
+    )
 
     return (
         <div className="space-y-6 sm:space-y-8">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-0">
-                <div>
-                    <h2 className="text-2xl sm:text-3xl font-bold flex items-center gap-2 text-foreground">
-                        <UtensilsCrossed className="h-7 w-7 sm:h-8 sm:w-8 text-primary" />
-                        Menu
-                    </h2>
-                    <p className="text-sm text-muted-foreground mt-2 sm:mt-1">
-                        {totalItems} items · {availableItems} available · {allCategories.length} categories
-                    </p>
-                </div>
-                <div className="grid grid-cols-2 sm:flex gap-2 sm:gap-2 w-full sm:w-auto">
-                    <AddCategoryDialog />
-                    <AddItemDialog categories={allCategories} />
-                </div>
-            </div>
+            <MenuHeader categories={allCategories} />
 
             {/* Empty State */}
             {allCategories.length === 0 && allItems.length === 0 && (
@@ -75,48 +118,39 @@ export default async function MenuPage() {
                 </div>
             )}
 
-            {/* Categories with Items */}
-            {allCategories.length > 0 && (
-                <div className="space-y-4 sm:space-y-5">
-                    {allCategories.map((category) => {
-                        const items = getItemsForCategory(category.id)
-                        return (
-                            <CategoryCard key={category.id} category={category} itemCount={items.length}>
-                                {items.length > 0 ? (
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-                                        {items.map((item) => (
-                                            <MenuItemCard key={item.id} item={item} categories={allCategories} />
-                                        ))}
-                                        {/* Add item button */}
-                                        <AddItemDialog
-                                            categories={allCategories}
-                                            defaultCategoryId={category.id}
-                                            trigger={
-                                                <button className="border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors aspect-video min-h-[150px] bg-muted/20 hover:bg-muted/40">
-                                                    <UtensilsCrossed className="h-6 w-6 sm:h-7 sm:w-7" />
-                                                    <span className="text-xs sm:text-sm font-medium">Add Item</span>
-                                                </button>
-                                            }
-                                        />
-                                    </div>
-                                ) : (
-                                    <div className="flex justify-center py-4">
-                                        <AddItemDialog
-                                            categories={allCategories}
-                                            defaultCategoryId={category.id}
-                                            trigger={
-                                                <button className="border-2 border-dashed rounded-xl px-6 sm:px-8 py-4 sm:py-5 flex items-center gap-2 text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors bg-muted/20 hover:bg-muted/40">
-                                                    <UtensilsCrossed className="h-5 w-5" />
-                                                    <span className="text-sm font-medium">Add first item</span>
-                                                </button>
-                                            }
-                                        />
-                                    </div>
-                                )}
-                            </CategoryCard>
-                        )
-                    })}
+            {/* No Results */}
+            {hasActiveFilters && allItems.length === 0 && allCategories.length > 0 && (
+                <div className="rounded-xl border-2 border-dashed p-8 sm:p-12 text-center bg-muted/20">
+                    <FolderOpen className="h-12 w-12 sm:h-16 sm:w-16 mx-auto text-muted-foreground mb-4" />
+                    <h3 className="font-semibold text-lg sm:text-xl mb-2">No items found</h3>
+                    <p className="text-muted-foreground text-sm mb-6 max-w-sm mx-auto">
+                        Try adjusting your search or filters to find what you're looking for
+                    </p>
                 </div>
+            )}
+
+            {/* Categories with Items */}
+            {allCategories.length > 0 && allItems.length > 0 && (
+                <>
+                    {hasActiveFilters ? (
+                        // Flat grid when searching/filtering
+                        <div className="-mx-4 sm:mx-0">
+                            <div className="px-4 sm:px-0 mb-3">
+                                <p className="text-sm text-muted-foreground">
+                                    Showing {allItems.length} {allItems.length === 1 ? 'item' : 'items'}
+                                </p>
+                            </div>
+                            <div className="px-4 sm:px-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+                                {allItems.map((item) => (
+                                    <MenuItemCard key={item.id} item={item} categories={allCategories} />
+                                ))}
+                            </div>
+                        </div>
+                    ) : (
+                        // Categorized view when no filters
+                        <CategoriesList categories={allCategories} items={allItems} />
+                    )}
+                </>
             )}
 
             {/* Uncategorized Items */}

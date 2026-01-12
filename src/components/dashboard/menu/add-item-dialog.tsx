@@ -33,15 +33,29 @@ interface AddItemDialogProps {
   categories: Category[]
   defaultCategoryId?: string
   trigger?: React.ReactNode
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
-export function AddItemDialog({ categories, defaultCategoryId, trigger }: AddItemDialogProps) {
+export function AddItemDialog({ categories, defaultCategoryId, trigger, open: controlledOpen, onOpenChange }: AddItemDialogProps) {
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [open, setOpen] = useState(false)
+  const [internalOpen, setInternalOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
+
+  // Use controlled open if provided, otherwise use internal state
+  const isControlled = controlledOpen !== undefined
+  const open = isControlled ? controlledOpen : internalOpen
+  const setOpen = (value: boolean) => {
+    if (isControlled) {
+      onOpenChange?.(value)
+    } else {
+      setInternalOpen(value)
+    }
+  }
+
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -156,8 +170,7 @@ export function AddItemDialog({ categories, defaultCategoryId, trigger }: AddIte
   const defaultTrigger = (
     <Button size="sm" className="gap-1.5 w-full sm:w-auto">
       <Plus className="h-4 w-4" />
-      <span className="hidden sm:inline">Add Item</span>
-      <span className="sm:hidden">Add</span>
+      Item
     </Button>
   )
 
