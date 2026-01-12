@@ -39,9 +39,9 @@ export function CustomerHeader({ restaurant, user }: CustomerHeaderProps) {
     return (
         <>
             <header className="sticky top-0 z-40 bg-background border-b">
-                <div className="container max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-2 sm:gap-4">
+                <div className="w-full max-w-7xl mx-auto px-3 sm:px-4 py-2 flex items-center justify-between gap-2">
                     {/* Logo & Name - Hidden on mobile */}
-                    <div className="hidden md:flex items-center gap-3 min-w-0">
+                    <div className="hidden md:flex items-center gap-3 min-w-0 flex-shrink">
                         {restaurant.logo_url && (
                             <img
                                 src={restaurant.logo_url}
@@ -52,20 +52,19 @@ export function CustomerHeader({ restaurant, user }: CustomerHeaderProps) {
                         <h1 className="font-bold text-lg truncate">{restaurant.name}</h1>
                     </div>
 
-                    {/* Location Selector - Takes full width on mobile, max-w on desktop */}
-                    <Button
-                        variant="outline"
-                        className="flex items-center gap-2 flex-1 md:flex-initial md:max-w-xs justify-between"
+                    {/* Location Display - Wraps on mobile, no box */}
+                    <button
                         onClick={() => setShowAddressSelector(true)}
+                        className="flex items-start gap-1.5 flex-1 md:flex-initial md:max-w-xs min-w-0 text-left"
                     >
-                        <div className="flex items-center gap-2 min-w-0 flex-1">
-                            <MapPin className="h-4 w-4 flex-shrink-0" />
-                            <span className="truncate text-sm">
-                                {isDetecting ? 'Detecting...' : locationDisplay}
-                            </span>
+                        <MapPin className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-muted-foreground" />
+                        <div className="flex-1 min-w-0">
+                            <p className="text-xs leading-tight text-foreground line-clamp-2 break-words">
+                                {isDetecting ? 'Detecting location...' : locationDisplay}
+                            </p>
                         </div>
-                        <ChevronDown className="h-4 w-4 flex-shrink-0" />
-                    </Button>
+                        <ChevronDown className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-muted-foreground hidden sm:block" />
+                    </button>
 
                     {/* Login / Profile */}
                     {user ? (
@@ -73,16 +72,16 @@ export function CustomerHeader({ restaurant, user }: CustomerHeaderProps) {
                             variant="ghost"
                             size="icon"
                             onClick={() => setShowProfileSidebar(true)}
-                            className="flex-shrink-0"
+                            className="flex-shrink-0 h-9 w-9"
                         >
                             {user.user_metadata?.avatar_url ? (
                                 <img
                                     src={user.user_metadata.avatar_url}
                                     alt={user.user_metadata?.full_name || 'User'}
-                                    className="h-8 w-8 rounded-full"
+                                    className="h-7 w-7 rounded-full"
                                 />
                             ) : (
-                                <User className="h-5 w-5" />
+                                <User className="h-4 w-4" />
                             )}
                         </Button>
                     ) : (
@@ -90,11 +89,11 @@ export function CustomerHeader({ restaurant, user }: CustomerHeaderProps) {
                             asChild
                             variant="default"
                             size="sm"
-                            className="flex-shrink-0"
+                            className="flex-shrink-0 h-9 px-3"
                         >
                             <Link href="/login">
-                                <LogIn className="h-4 w-4 sm:mr-2" />
-                                <span className="hidden sm:inline">Login</span>
+                                <LogIn className="h-3.5 w-3.5 sm:mr-2" />
+                                <span className="hidden sm:inline text-xs">Login</span>
                             </Link>
                         </Button>
                     )}
