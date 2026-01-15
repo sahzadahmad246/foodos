@@ -26,7 +26,7 @@ import { getUserAddresses, deleteAddress } from '@/lib/address-utils'
 import { AddAddressModal } from './add-address-modal'
 import { toast } from 'sonner'
 
-interface Address {
+export interface Address {
     id: string
     latitude: number
     longitude: number

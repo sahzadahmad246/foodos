@@ -134,3 +134,29 @@
     scrollbar-width: none;  /* Firefox */
   }
 }
+
+/* New order modal animation */
+@keyframes pulse-border {
+  0%, 100% { 
+    border-color: hsl(var(--primary)); 
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.3);
+  }
+  50% { 
+    border-color: hsl(var(--primary) / 0.5); 
+    box-shadow: 0 0 40px hsl(var(--primary) / 0.5);
+  }
+}
+
+.animate-pulse-border {
+  animation: pulse-border 1s ease-in-out infinite;
+}
+
+/* Status step animation */
+@keyframes status-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+.animate-status-active {
+  animation: status-pulse 1.5s ease-in-out infinite;
+}

@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
-import { notFound, redirect } from "next/navigation"
+import { notFound } from "next/navigation"
 import { CheckoutForm } from "@/components/customer/checkout-form"
 
 export const dynamic = "force-dynamic"
@@ -16,8 +16,6 @@ export default async function CheckoutPage({ params }: PageProps) {
     const { data: { user } } = await supabase.auth.getUser()
 
     // Fetch restaurant by slug with settings
-    // Note: Removed is_online filter as customers should still be able to checkout
-    // even if restaurant just went offline during their order
     const { data: restaurant, error } = await supabase
         .from("restaurants")
         .select(`
@@ -27,12 +25,7 @@ export default async function CheckoutPage({ params }: PageProps) {
         .eq("slug", slug)
         .single()
 
-    // Debug log to check settings
-    console.log('Checkout page - restaurant:', restaurant?.name)
-    console.log('Checkout page - settings:', restaurant?.restaurant_settings)
-
     if (!restaurant) {
-        console.log('Checkout page - error:', error)
         notFound()
     }
 
@@ -49,8 +42,8 @@ export default async function CheckoutPage({ params }: PageProps) {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
-            <div className="max-w-lg mx-auto px-4 py-4 pb-8">
+        <div className="min-h-screen bg-background">
+            <div className="max-w-xl mx-auto px-4">
                 <CheckoutForm
                     restaurant={restaurant}
                     userId={user?.id}

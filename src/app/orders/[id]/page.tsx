@@ -28,7 +28,7 @@ export default async function OrderPage({ params }: PageProps) {
 
     return (
         <div className="min-h-screen bg-background">
-            <div className="container max-w-2xl mx-auto px-4 py-8">
+            <div className="max-w-xl mx-auto px-4">
                 <OrderConfirmation order={order} />
             </div>
         </div>

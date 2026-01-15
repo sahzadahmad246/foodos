@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
-import { OrdersList } from "@/components/dashboard/orders/orders-list"
+import { RealtimeOrdersWrapper } from "@/components/dashboard/orders/realtime-orders-wrapper"
 import { Package } from "lucide-react"
 
 export const dynamic = "force-dynamic"
@@ -62,6 +62,12 @@ export default async function OrdersPage() {
                     <h2 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
                         <Package className="h-7 w-7 sm:h-8 sm:w-8 text-primary" />
                         Orders
+                        {statusCounts.pending > 0 && (
+                            <span className="relative flex h-3 w-3">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span>
+                            </span>
+                        )}
                     </h2>
                     <p className="text-sm text-muted-foreground mt-1">
                         {activeOrders > 0 ? (
@@ -78,7 +84,10 @@ export default async function OrdersPage() {
                 </div>
             </div>
 
-            <OrdersList orders={orders || []} />
+            <RealtimeOrdersWrapper
+                initialOrders={orders || []}
+                restaurantId={restaurant.id}
+            />
         </div>
     )
 }
