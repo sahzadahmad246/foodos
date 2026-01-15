@@ -12,7 +12,10 @@ export default async function CheckoutPage({ params }: PageProps) {
     const { slug } = await params
     const supabase = await createClient()
 
-    // Fetch restaurant by slug
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser()
+
+    // Fetch restaurant by slug with settings
     const { data: restaurant } = await supabase
         .from("restaurants")
         .select("*, restaurant_settings(*)")
@@ -24,11 +27,27 @@ export default async function CheckoutPage({ params }: PageProps) {
         notFound()
     }
 
+    // Fetch user's saved addresses if logged in
+    let addresses: any[] = []
+    if (user) {
+        const { data } = await supabase
+            .from("customer_addresses")
+            .select("*")
+            .eq("user_id", user.id)
+            .order("is_default", { ascending: false })
+            .order("created_at", { ascending: false })
+        addresses = data || []
+    }
+
     return (
         <div className="min-h-screen bg-background">
             <div className="container max-w-2xl mx-auto px-4 py-8">
                 <h1 className="text-2xl font-bold mb-6">Checkout</h1>
-                <CheckoutForm restaurant={restaurant} />
+                <CheckoutForm
+                    restaurant={restaurant}
+                    userId={user?.id}
+                    savedAddresses={addresses}
+                />
             </div>
         </div>
     )

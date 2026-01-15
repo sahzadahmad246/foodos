@@ -12,6 +12,8 @@ interface Address {
     pincode: string | null
     address_type: string
     is_default: boolean
+    person_name: string
+    mobile: string
 }
 
 // Find saved address within specified radius (in meters)

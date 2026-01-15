@@ -1,12 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import {
     Select,
     SelectContent,
@@ -15,7 +14,7 @@ import {
     SelectValue,
 } from '@/components/ui/select'
 import { Loader2, MapPin } from 'lucide-react'
-import { saveAddress } from '@/lib/address-utils'
+import { saveAddress, updateAddress } from '@/lib/address-utils'
 import { reverseGeocode } from '@/lib/geocoding'
 import { toast } from 'sonner'
 
@@ -24,28 +23,71 @@ const LocationMapModal = dynamic(
     { ssr: false }
 )
 
+interface AddressData {
+    id?: string
+    latitude: number
+    longitude: number
+    locality: string | null
+    flat_building: string
+    landmark: string | null
+    city: string | null
+    state: string | null
+    pincode: string | null
+    address_type: string
+    is_default: boolean
+    person_name: string
+    mobile: string
+}
+
 interface AddAddressModalProps {
     open: boolean
     onClose: () => void
     onAddressAdded: () => void
     userId: string
+    editAddress?: AddressData | null
 }
 
-export function AddAddressModal({ open, onClose, onAddressAdded, userId }: AddAddressModalProps) {
+const defaultFormData = {
+    latitude: 0,
+    longitude: 0,
+    locality: '',
+    flat_building: '',
+    landmark: '',
+    city: '',
+    state: '',
+    pincode: '',
+    address_type: 'home',
+    is_default: false,
+    person_name: '',
+    mobile: '',
+}
+
+export function AddAddressModal({ open, onClose, onAddressAdded, userId, editAddress }: AddAddressModalProps) {
     const [showMap, setShowMap] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
-    const [formData, setFormData] = useState({
-        latitude: 0,
-        longitude: 0,
-        locality: '',
-        flat_building: '',
-        landmark: '',
-        city: '',
-        state: '',
-        pincode: '',
-        address_type: 'home',
-        is_default: false,
-    })
+    const [formData, setFormData] = useState(defaultFormData)
+
+    // Populate form when editing
+    useEffect(() => {
+        if (editAddress) {
+            setFormData({
+                latitude: editAddress.latitude,
+                longitude: editAddress.longitude,
+                locality: editAddress.locality || '',
+                flat_building: editAddress.flat_building,
+                landmark: editAddress.landmark || '',
+                city: editAddress.city || '',
+                state: editAddress.state || '',
+                pincode: editAddress.pincode || '',
+                address_type: editAddress.address_type,
+                is_default: editAddress.is_default,
+                person_name: editAddress.person_name || '',
+                mobile: editAddress.mobile || '',
+            })
+        } else {
+            setFormData(defaultFormData)
+        }
+    }, [editAddress, open])
 
     const handleLocationSelected = async (location: { latitude: number; longitude: number; locality: string | null }) => {
         const geocoded = await reverseGeocode(location.latitude, location.longitude)
@@ -65,6 +107,16 @@ export function AddAddressModal({ open, onClose, onAddressAdded, userId }: AddAd
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
 
+        if (!formData.person_name) {
+            toast.error('Please enter person name')
+            return
+        }
+
+        if (!formData.mobile || formData.mobile.length < 10) {
+            toast.error('Please enter valid mobile number')
+            return
+        }
+
         if (!formData.latitude || !formData.longitude) {
             toast.error('Please select a location on the map')
             return
@@ -76,42 +128,63 @@ export function AddAddressModal({ open, onClose, onAddressAdded, userId }: AddAd
         }
 
         setIsSaving(true)
-        const result = await saveAddress(userId, formData)
+
+        let result
+        if (editAddress?.id) {
+            result = await updateAddress(editAddress.id, formData)
+        } else {
+            result = await saveAddress(userId, formData)
+        }
+
         setIsSaving(false)
 
         if (result.error) {
             toast.error(result.error)
         } else {
-            toast.success('Address saved successfully')
+            toast.success(editAddress ? 'Address updated successfully' : 'Address saved successfully')
             onAddressAdded()
             onClose()
-            // Reset form
-            setFormData({
-                latitude: 0,
-                longitude: 0,
-                locality: '',
-                flat_building: '',
-                landmark: '',
-                city: '',
-                state: '',
-                pincode: '',
-                address_type: 'home',
-                is_default: false,
-            })
+            setFormData(defaultFormData)
         }
     }
 
-    const isFormValid = formData.latitude && formData.longitude && formData.flat_building
+    const isFormValid = formData.person_name && formData.mobile && formData.latitude && formData.longitude && formData.flat_building
 
     return (
         <>
             <Dialog open={open} onOpenChange={onClose}>
                 <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                        <DialogTitle>Add New Address</DialogTitle>
+                        <DialogTitle>{editAddress ? 'Edit Address' : 'Add New Address'}</DialogTitle>
                     </DialogHeader>
 
                     <form onSubmit={handleSubmit} className="space-y-4">
+                        {/* Person Name */}
+                        <div className="space-y-2">
+                            <Label htmlFor="person_name">Person Name *</Label>
+                            <Input
+                                id="person_name"
+                                value={formData.person_name}
+                                onChange={(e) => setFormData(prev => ({ ...prev, person_name: e.target.value }))}
+                                placeholder="Name of person at this address"
+                                required
+                            />
+                        </div>
+
+                        {/* Mobile Number */}
+                        <div className="space-y-2">
+                            <Label htmlFor="mobile">Mobile Number *</Label>
+                            <Input
+                                id="mobile"
+                                type="tel"
+                                value={formData.mobile}
+                                onChange={(e) => setFormData(prev => ({ ...prev, mobile: e.target.value }))}
+                                placeholder="10-digit mobile number"
+                                maxLength={10}
+                                required
+                            />
+                        </div>
+
                         {/* Location Selector */}
                         <div className="space-y-2">
                             <Label>Location *</Label>
@@ -194,7 +267,7 @@ export function AddAddressModal({ open, onClose, onAddressAdded, userId }: AddAd
                                 className="flex-1"
                             >
                                 {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Save Address
+                                {editAddress ? 'Update Address' : 'Save Address'}
                             </Button>
                         </div>
                     </form>

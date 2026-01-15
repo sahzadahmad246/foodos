@@ -1,18 +1,23 @@
 'use client'
 
 import { useState } from 'react'
-import { MapPin, Phone, User, Clock, ChevronDown, ChevronUp } from 'lucide-react'
+import { MapPin, Phone, User, Clock, Package, ChefHat, Bike, Check, X, Loader2, UserPlus } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select'
-import { updateOrderStatus } from '../actions/order-actions'
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { acceptOrder, rejectOrder, markOrderReady } from '../actions/order-actions'
 import { toast } from 'sonner'
+import { useRouter } from 'next/navigation'
 
 interface OrderItem {
     id: string
@@ -32,8 +37,11 @@ interface Order {
     tax_amount: number
     total_amount: number
     payment_method: string
+    payment_status: string
     status: string
     created_at: string
+    notes?: string | null
+    rider_id?: string | null
     order_items: OrderItem[]
 }
 
@@ -41,160 +49,257 @@ interface OrderCardProps {
     order: Order
 }
 
-const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-    pending: { label: 'Pending', color: 'bg-yellow-500' },
-    confirmed: { label: 'Confirmed', color: 'bg-blue-500' },
-    preparing: { label: 'Preparing', color: 'bg-purple-500' },
-    ready: { label: 'Ready', color: 'bg-green-500' },
-    out_for_delivery: { label: 'Out for Delivery', color: 'bg-orange-500' },
-    delivered: { label: 'Delivered', color: 'bg-green-600' },
-    cancelled: { label: 'Cancelled', color: 'bg-red-500' },
+const STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: string }> = {
+    pending: { label: 'New Order', color: 'text-yellow-700', bgColor: 'bg-yellow-100 border-yellow-300' },
+    preparing: { label: 'Preparing', color: 'text-purple-700', bgColor: 'bg-purple-100 border-purple-300' },
+    ready: { label: 'Ready for Pickup', color: 'text-green-700', bgColor: 'bg-green-100 border-green-300' },
+    out_for_delivery: { label: 'Out for Delivery', color: 'text-blue-700', bgColor: 'bg-blue-100 border-blue-300' },
+    delivered: { label: 'Delivered', color: 'text-green-800', bgColor: 'bg-green-50 border-green-200' },
+    cancelled: { label: 'Cancelled', color: 'text-red-700', bgColor: 'bg-red-100 border-red-300' },
 }
 
+type LoadingAction = 'accept' | 'reject' | 'ready' | 'assign' | null
+
 export function OrderCard({ order }: OrderCardProps) {
-    const [isExpanded, setIsExpanded] = useState(false)
-    const [isUpdating, setIsUpdating] = useState(false)
+    const router = useRouter()
+    const [loadingAction, setLoadingAction] = useState<LoadingAction>(null)
+    const [showRejectDialog, setShowRejectDialog] = useState(false)
 
     const statusConfig = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending
+    const isLoading = loadingAction !== null
 
-    const handleStatusChange = async (newStatus: string) => {
-        setIsUpdating(true)
-        const result = await updateOrderStatus(order.id, newStatus)
-        setIsUpdating(false)
-
+    const handleAccept = async () => {
+        setLoadingAction('accept')
+        const result = await acceptOrder(order.id)
+        setLoadingAction(null)
         if (result.error) {
             toast.error(result.error)
         } else {
-            toast.success('Order status updated')
+            toast.success('Order accepted! Start preparing.')
+            router.refresh()
         }
     }
 
+    const handleReject = async () => {
+        setLoadingAction('reject')
+        const result = await rejectOrder(order.id)
+        setLoadingAction(null)
+        if (result.error) {
+            toast.error(result.error)
+        } else {
+            toast.success('Order rejected')
+            setShowRejectDialog(false)
+            router.refresh()
+        }
+    }
+
+    const handleMarkReady = async () => {
+        setLoadingAction('ready')
+        const result = await markOrderReady(order.id)
+        setLoadingAction(null)
+        if (result.error) {
+            toast.error(result.error)
+        } else {
+            toast.success('Order marked as ready!')
+            router.refresh()
+        }
+    }
+
+    const formatTime = (dateString: string) => {
+        const date = new Date(dateString)
+        const now = new Date()
+        const diffMs = now.getTime() - date.getTime()
+        const diffMins = Math.floor(diffMs / 60000)
+
+        if (diffMins < 1) return 'Just now'
+        if (diffMins < 60) return `${diffMins}m ago`
+        if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`
+        return date.toLocaleDateString()
+    }
+
     return (
-        <div className="border rounded-lg bg-card overflow-hidden">
-            {/* Header */}
-            <div className="p-4 bg-muted/30">
-                <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                            <span className="font-mono font-bold">{order.order_number}</span>
-                            <Badge className={statusConfig.color}>{statusConfig.label}</Badge>
+        <>
+            <Card className={`overflow-hidden border-2 ${statusConfig.bgColor}`}>
+                <CardHeader className="pb-2 pt-3 px-4">
+                    <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                            <div className="font-mono font-bold text-lg">{order.order_number}</div>
+                            <Badge variant="outline" className={statusConfig.color}>
+                                {statusConfig.label}
+                            </Badge>
+                            {order.payment_method === 'cod' && (
+                                <Badge variant="secondary" className="text-xs">COD</Badge>
+                            )}
+                            {order.payment_status === 'paid' && (
+                                <Badge className="bg-green-500 text-xs">Paid</Badge>
+                            )}
                         </div>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                            <div className="flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                {new Date(order.created_at).toLocaleString()}
-                            </div>
-                            <div className="font-semibold text-foreground">
-                                ₹{order.total_amount.toFixed(2)}
-                            </div>
+                        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                            <Clock className="h-4 w-4" />
+                            {formatTime(order.created_at)}
                         </div>
                     </div>
+                </CardHeader>
 
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setIsExpanded(!isExpanded)}
-                    >
-                        {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                    </Button>
-                </div>
-            </div>
-
-            {/* Details (Expandable) */}
-            {isExpanded && (
-                <div className="p-4 space-y-4 border-t">
+                <CardContent className="space-y-3 px-4 pb-4">
                     {/* Customer Info */}
-                    <div className="space-y-2">
-                        <h4 className="font-semibold text-sm">Customer Details</h4>
-                        <div className="space-y-1 text-sm">
-                            <div className="flex items-center gap-2">
-                                <User className="h-3 w-3 text-muted-foreground" />
-                                <span>{order.customer_name}</span>
-                            </div>
-                            {order.customer_phone && (
-                                <div className="flex items-center gap-2">
-                                    <Phone className="h-3 w-3 text-muted-foreground" />
-                                    <span>{order.customer_phone}</span>
-                                </div>
-                            )}
-                            {order.customer_address && (
-                                <div className="flex items-start gap-2">
-                                    <MapPin className="h-3 w-3 text-muted-foreground mt-0.5" />
-                                    <span className="text-xs">{order.customer_address}</span>
-                                </div>
-                            )}
+                    <div className="flex items-start gap-4 text-sm">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                            <span className="font-medium truncate">{order.customer_name}</span>
                         </div>
+                        {order.customer_phone && (
+                            <a href={`tel:${order.customer_phone}`} className="flex items-center gap-1.5 text-primary hover:underline">
+                                <Phone className="h-4 w-4" />
+                                {order.customer_phone}
+                            </a>
+                        )}
                     </div>
+
+                    {order.customer_address && (
+                        <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                            <MapPin className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                            <span className="line-clamp-2">{order.customer_address}</span>
+                        </div>
+                    )}
 
                     {/* Order Items */}
-                    <div className="space-y-2">
-                        <h4 className="font-semibold text-sm">Items</h4>
-                        <div className="space-y-1">
-                            {order.order_items.map((item) => (
-                                <div key={item.id} className="flex justify-between text-sm">
-                                    <span>
-                                        {item.quantity}x {item.name}
-                                    </span>
-                                    <span className="font-medium">
-                                        ₹{(item.price * item.quantity).toFixed(2)}
-                                    </span>
-                                </div>
-                            ))}
+                    <div className="bg-background/50 rounded-lg p-3 space-y-1.5">
+                        <div className="flex items-center gap-2 text-sm font-medium mb-2">
+                            <Package className="h-4 w-4" />
+                            Items ({order.order_items?.length || 0})
                         </div>
-                    </div>
-
-                    {/* Summary */}
-                    <div className="space-y-1 pt-3 border-t text-sm">
-                        <div className="flex justify-between">
-                            <span>Subtotal</span>
-                            <span>₹{order.items_total.toFixed(2)}</span>
-                        </div>
-                        {order.delivery_fee > 0 && (
-                            <div className="flex justify-between">
-                                <span>Delivery Fee</span>
-                                <span>₹{order.delivery_fee.toFixed(2)}</span>
+                        {(order.order_items || []).map((item) => (
+                            <div key={item.id} className="flex justify-between text-sm">
+                                <span>{item.quantity}x {item.name}</span>
+                                <span className="font-medium">₹{(item.price * item.quantity).toFixed(0)}</span>
                             </div>
+                        ))}
+                        {(!order.order_items || order.order_items.length === 0) && (
+                            <p className="text-xs text-muted-foreground">No items data</p>
                         )}
-                        {order.tax_amount > 0 && (
-                            <div className="flex justify-between">
-                                <span>Tax</span>
-                                <span>₹{order.tax_amount.toFixed(2)}</span>
-                            </div>
-                        )}
-                        <div className="flex justify-between font-semibold pt-1 border-t">
+                        <div className="flex justify-between font-semibold pt-2 border-t mt-2">
                             <span>Total</span>
-                            <span>₹{order.total_amount.toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between text-xs pt-2">
-                            <span className="text-muted-foreground">Payment</span>
-                            <span className="font-medium capitalize">{order.payment_method}</span>
+                            <span>₹{order.total_amount.toFixed(0)}</span>
                         </div>
                     </div>
 
-                    {/* Status Update */}
-                    <div className="pt-3 border-t">
-                        <label className="text-sm font-medium mb-2 block">Update Status</label>
-                        <Select
-                            value={order.status}
-                            onValueChange={handleStatusChange}
-                            disabled={isUpdating}
-                        >
-                            <SelectTrigger>
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="pending">Pending</SelectItem>
-                                <SelectItem value="confirmed">Confirmed</SelectItem>
-                                <SelectItem value="preparing">Preparing</SelectItem>
-                                <SelectItem value="ready">Ready</SelectItem>
-                                <SelectItem value="out_for_delivery">Out for Delivery</SelectItem>
-                                <SelectItem value="delivered">Delivered</SelectItem>
-                                <SelectItem value="cancelled">Cancelled</SelectItem>
-                            </SelectContent>
-                        </Select>
+                    {/* Notes */}
+                    {order.notes && (
+                        <div className="text-sm text-muted-foreground bg-muted/50 rounded p-2">
+                            <span className="font-medium">Note: </span>{order.notes}
+                        </div>
+                    )}
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-2 pt-2">
+                        {order.status === 'pending' && (
+                            <>
+                                <Button
+                                    onClick={handleAccept}
+                                    disabled={isLoading}
+                                    className="flex-1 bg-green-600 hover:bg-green-700"
+                                >
+                                    {loadingAction === 'accept' ? (
+                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    ) : (
+                                        <Check className="h-4 w-4 mr-2" />
+                                    )}
+                                    Accept
+                                </Button>
+                                <Button
+                                    variant="destructive"
+                                    onClick={() => setShowRejectDialog(true)}
+                                    disabled={isLoading}
+                                    className="flex-1"
+                                >
+                                    <X className="h-4 w-4 mr-2" />
+                                    Reject
+                                </Button>
+                            </>
+                        )}
+
+                        {order.status === 'preparing' && (
+                            <>
+                                <Button
+                                    onClick={handleMarkReady}
+                                    disabled={isLoading}
+                                    className="flex-1 bg-green-600 hover:bg-green-700"
+                                >
+                                    {loadingAction === 'ready' ? (
+                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    ) : (
+                                        <ChefHat className="h-4 w-4 mr-2" />
+                                    )}
+                                    Mark Ready
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    disabled={true}
+                                    className="flex-1"
+                                    title="Rider assignment coming soon"
+                                >
+                                    <UserPlus className="h-4 w-4 mr-2" />
+                                    Assign Rider
+                                </Button>
+                            </>
+                        )}
+
+                        {order.status === 'ready' && (
+                            <div className="flex-1 flex items-center justify-center gap-2 py-2 bg-muted/50 rounded-lg text-muted-foreground">
+                                <Bike className="h-4 w-4" />
+                                <span className="text-sm">
+                                    {order.rider_id ? 'Waiting for rider pickup' : 'No rider assigned yet'}
+                                </span>
+                            </div>
+                        )}
+
+                        {order.status === 'out_for_delivery' && (
+                            <div className="flex-1 flex items-center justify-center gap-2 py-2 bg-blue-50 rounded-lg text-blue-700">
+                                <Bike className="h-4 w-4" />
+                                <span className="text-sm font-medium">On the way to customer</span>
+                            </div>
+                        )}
+
+                        {order.status === 'delivered' && (
+                            <div className="flex-1 flex items-center justify-center gap-2 py-2 bg-green-50 rounded-lg text-green-700">
+                                <Check className="h-4 w-4" />
+                                <span className="text-sm font-medium">Order completed</span>
+                            </div>
+                        )}
+
+                        {order.status === 'cancelled' && (
+                            <div className="flex-1 flex items-center justify-center gap-2 py-2 bg-red-50 rounded-lg text-red-700">
+                                <X className="h-4 w-4" />
+                                <span className="text-sm font-medium">Order cancelled</span>
+                            </div>
+                        )}
                     </div>
-                </div>
-            )}
-        </div>
+                </CardContent>
+            </Card>
+
+            {/* Reject Confirmation */}
+            <AlertDialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
+                <AlertDialogContent className="max-w-sm">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Reject Order {order.order_number}?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will cancel the order. The customer will be notified.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={loadingAction === 'reject'}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleReject}
+                            disabled={loadingAction === 'reject'}
+                            className="bg-destructive text-destructive-foreground"
+                        >
+                            {loadingAction === 'reject' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Reject Order
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </>
     )
 }

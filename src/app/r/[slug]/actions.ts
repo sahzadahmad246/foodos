@@ -15,6 +15,8 @@ interface CreateOrderData {
     customerName: string
     customerPhone: string
     customerAddress: string | null
+    customerLatitude?: number
+    customerLongitude?: number
     itemsTotal: number
     deliveryFee: number
     taxAmount: number
@@ -28,6 +30,19 @@ export async function createOrder(data: CreateOrderData) {
     try {
         const supabase = await createClient()
 
+        // Debug: Log incoming data
+        console.log('Creating order with data:', {
+            restaurantId: data.restaurantId,
+            customerName: data.customerName,
+            itemsCount: data.items?.length,
+            items: data.items
+        })
+
+        if (!data.items || data.items.length === 0) {
+            console.error('No items in order data')
+            return { error: 'Cart is empty' }
+        }
+
         // Generate order number
         const orderNumber = `ORD-${Date.now().toString().slice(-8)}`
 
@@ -40,6 +55,8 @@ export async function createOrder(data: CreateOrderData) {
                 customer_name: data.customerName,
                 customer_phone: data.customerPhone,
                 customer_address: data.customerAddress,
+                customer_latitude: data.customerLatitude,
+                customer_longitude: data.customerLongitude,
                 items_total: data.itemsTotal,
                 delivery_fee: data.deliveryFee,
                 tax_amount: data.taxAmount,
@@ -57,6 +74,8 @@ export async function createOrder(data: CreateOrderData) {
             return { error: 'Failed to create order' }
         }
 
+        console.log('Order created:', order.id)
+
         // Create order items
         const orderItems = data.items.map(item => ({
             order_id: order.id,
@@ -66,16 +85,21 @@ export async function createOrder(data: CreateOrderData) {
             quantity: item.quantity,
         }))
 
-        const { error: itemsError } = await supabase
+        console.log('Inserting order items:', orderItems)
+
+        const { data: insertedItems, error: itemsError } = await supabase
             .from('order_items')
             .insert(orderItems)
+            .select()
 
         if (itemsError) {
             console.error('Order items creation error:', itemsError)
             // Rollback order if items fail
             await supabase.from('orders').delete().eq('id', order.id)
-            return { error: 'Failed to create order items' }
+            return { error: 'Failed to create order items: ' + itemsError.message }
         }
+
+        console.log('Order items created:', insertedItems?.length)
 
         revalidatePath('/dashboard/orders')
 

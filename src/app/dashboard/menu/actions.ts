@@ -239,3 +239,60 @@ export async function toggleItemAvailable(id: string, isAvailable: boolean) {
     revalidatePath('/dashboard/menu')
     return { success: true }
 }
+
+// ============ BULK ACTIONS ============
+
+export async function bulkToggleAvailable(itemIds: string[], isAvailable: boolean) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'Not authenticated' }
+
+    if (itemIds.length === 0) return { error: 'No items selected' }
+
+    const { error } = await supabase
+        .from('menu_items')
+        .update({ is_available: isAvailable, updated_at: new Date().toISOString() })
+        .in('id', itemIds)
+
+    if (error) return { error: error.message }
+
+    revalidatePath('/dashboard/menu')
+    return { success: true, count: itemIds.length }
+}
+
+export async function bulkDeleteItems(itemIds: string[]) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'Not authenticated' }
+
+    if (itemIds.length === 0) return { error: 'No items selected' }
+
+    const { error } = await supabase
+        .from('menu_items')
+        .delete()
+        .in('id', itemIds)
+
+    if (error) return { error: error.message }
+
+    revalidatePath('/dashboard/menu')
+    return { success: true, count: itemIds.length }
+}
+
+export async function bulkMoveToCategory(itemIds: string[], categoryId: string | null) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'Not authenticated' }
+
+    if (itemIds.length === 0) return { error: 'No items selected' }
+
+    const { error } = await supabase
+        .from('menu_items')
+        .update({ category_id: categoryId, updated_at: new Date().toISOString() })
+        .in('id', itemIds)
+
+    if (error) return { error: error.message }
+
+    revalidatePath('/dashboard/menu')
+    return { success: true, count: itemIds.length }
+}
+
