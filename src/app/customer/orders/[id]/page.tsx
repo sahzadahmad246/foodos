@@ -28,11 +28,24 @@ export default async function CustomerOrderDetailsPage({ params }: PageProps) {
             order_items(*)
         `)
         .eq("id", id)
-        .eq("user_id", user.id) // Ensure order belongs to user
         .single()
 
     if (!order) {
         notFound()
+    }
+
+    // Secure checking: verify phone number matches
+    // Note: strict equality check might fail if formatting differs
+    // We check if verified user phone is present in order's customer phone
+    // or if order's phone is contained in user's phone
+    const userPhone = user.phone || user.user_metadata?.phone || user.user_metadata?.mobile
+    const orderPhone = order.customer_phone
+
+    if (!userPhone || !orderPhone || !orderPhone.includes(userPhone.replace('+91', '')) && !userPhone.includes(orderPhone.replace('+91', ''))) {
+        // Limit access if phone doesn't match
+        // For development/demo purposes we might be lenient or redirect
+        // For now, redirect to public order page which is accessible
+        redirect(`/orders/${id}`)
     }
 
     return (

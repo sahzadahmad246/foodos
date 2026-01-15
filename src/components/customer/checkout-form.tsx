@@ -139,7 +139,6 @@ export function CheckoutForm({ restaurant, userId, savedAddresses }: CheckoutFor
 
     const createOrderData = useCallback(() => ({
         restaurantId: restaurant.id,
-        userId: userId,
         customerName: selectedAddress?.person_name || 'Customer',
         customerPhone: selectedAddress?.mobile || '',
         customerAddress: orderType === 'delivery' && selectedAddress
