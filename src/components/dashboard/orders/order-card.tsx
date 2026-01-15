@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { MapPin, Phone, User, Clock, Package, ChefHat, Bike, Check, X, Loader2, UserPlus } from 'lucide-react'
+import { MapPin, Phone, User, Clock, Package, ChefHat, Bike, Check, X, Loader2, UserPlus, Store } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
@@ -156,10 +156,17 @@ export function OrderCard({ order }: OrderCardProps) {
                         )}
                     </div>
 
-                    {order.customer_address && (
+                    {order.customer_address ? (
                         <div className="flex items-start gap-2 text-sm text-muted-foreground">
                             <MapPin className="h-4 w-4 flex-shrink-0 mt-0.5" />
                             <span className="line-clamp-2">{order.customer_address}</span>
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-2 text-sm">
+                            <Store className="h-4 w-4 text-primary" />
+                            <span className="font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full text-xs">
+                                🏬 Pickup Order
+                            </span>
                         </div>
                     )}
 

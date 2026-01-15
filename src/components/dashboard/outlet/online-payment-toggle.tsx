@@ -1,8 +1,11 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { Switch } from '@/components/ui/switch'
-import { EditPaymentKeysDialog } from '@/components/dashboard/outlet/edit-payment-keys'
+import { Loader2 } from 'lucide-react'
+import { toggleOnlinePayment } from '@/app/dashboard/outlet/payment-actions'
+import { toast } from 'sonner'
 
 interface OnlinePaymentToggleProps {
     restaurantId: string
@@ -17,20 +20,31 @@ export function OnlinePaymentToggle({
     hasRazorpayKeys,
     razorpayKeyId
 }: OnlinePaymentToggleProps) {
-    const [showDialog, setShowDialog] = useState(false)
-    const dialogTriggerRef = useRef<HTMLButtonElement>(null)
+    const router = useRouter()
+    const [isPending, startTransition] = useTransition()
+    const [isEnabled, setIsEnabled] = useState(enabled)
 
-    const handleToggle = () => {
-        if (!enabled && !hasRazorpayKeys) {
-            // Trying to enable but no keys - show dialog
-            dialogTriggerRef.current?.click()
+    const handleToggle = (checked: boolean) => {
+        if (!hasRazorpayKeys && checked) {
+            toast.error('Please setup Razorpay keys first')
+            return
         }
+
+        setIsEnabled(checked)
+        startTransition(async () => {
+            const result = await toggleOnlinePayment(restaurantId, checked)
+            if (result.error) {
+                setIsEnabled(!checked) // Revert on error
+                toast.error(result.error)
+            } else {
+                toast.success(checked ? 'Online payments enabled' : 'Online payments disabled')
+                router.refresh()
+            }
+        })
     }
 
-    const isDisabled = !hasRazorpayKeys && !enabled
-
     return (
-        <div className={`flex items-center justify-between gap-4 p-3 rounded-lg transition-colors ${enabled ? 'bg-primary/5' : 'bg-muted/50'
+        <div className={`flex items-center justify-between gap-4 p-3 rounded-lg transition-colors ${isEnabled ? 'bg-primary/5' : 'bg-muted/50'
             }`}>
             <div className="min-w-0">
                 <p className="font-medium text-sm">Online Payments</p>
@@ -41,25 +55,13 @@ export function OnlinePaymentToggle({
             </div>
 
             <div className="flex items-center gap-2">
-                {!hasRazorpayKeys ? (
-                    <EditPaymentKeysDialog
-                        restaurantId={restaurantId}
-                        hasKeys={hasRazorpayKeys}
-                        keyId={razorpayKeyId}
-                        triggerButton={
-                            <button
-                                ref={dialogTriggerRef}
-                                className="text-xs text-primary underline"
-                            >
-                                Setup Keys
-                            </button>
-                        }
-                    />
+                {isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                     <Switch
-                        checked={enabled}
+                        checked={isEnabled}
                         onCheckedChange={handleToggle}
-                        disabled={isDisabled}
+                        disabled={!hasRazorpayKeys}
                         className="shrink-0"
                     />
                 )}

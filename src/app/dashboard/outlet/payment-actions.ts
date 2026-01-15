@@ -38,12 +38,13 @@ export async function saveRazorpayKeys(
         // Encrypt the secret key
         const encryptedSecret = encrypt(keySecret)
 
-        // Update settings
+        // Update settings - also enable online payments when keys are saved
         const { error: updateError } = await supabase
             .from('restaurant_settings')
             .update({
                 razorpay_key_id: keyId,
                 razorpay_key_secret_encrypted: encryptedSecret,
+                online_payment_enabled: true,
                 updated_at: new Date().toISOString(),
             })
             .eq('restaurant_id', restaurantId)
@@ -112,6 +113,58 @@ export async function removeRazorpayKeys(restaurantId: string): Promise<PaymentK
             updated_at: new Date().toISOString(),
         })
         .eq('restaurant_id', restaurantId)
+
+    revalidatePath('/dashboard/outlet')
+    return { success: true }
+}
+
+// Toggle online payment enabled
+export async function toggleOnlinePayment(
+    restaurantId: string,
+    enabled: boolean
+): Promise<PaymentKeysResponse> {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+        return { error: 'Not authenticated' }
+    }
+
+    const { data: restaurant } = await supabase
+        .from('restaurants')
+        .select('id')
+        .eq('id', restaurantId)
+        .eq('owner_id', user.id)
+        .single()
+
+    if (!restaurant) {
+        return { error: 'Restaurant not found' }
+    }
+
+    // If enabling, verify keys exist
+    if (enabled) {
+        const { data: settings } = await supabase
+            .from('restaurant_settings')
+            .select('razorpay_key_id')
+            .eq('restaurant_id', restaurantId)
+            .single()
+
+        if (!settings?.razorpay_key_id) {
+            return { error: 'Please setup Razorpay keys first' }
+        }
+    }
+
+    const { error } = await supabase
+        .from('restaurant_settings')
+        .update({
+            online_payment_enabled: enabled,
+            updated_at: new Date().toISOString(),
+        })
+        .eq('restaurant_id', restaurantId)
+
+    if (error) {
+        return { error: error.message }
+    }
 
     revalidatePath('/dashboard/outlet')
     return { success: true }
