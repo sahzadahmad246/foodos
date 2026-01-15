@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { CategoryCard } from '@/components/dashboard/menu/category-card'
 import { MenuItemCard } from '@/components/dashboard/menu/menu-item-card'
 import { AddItemDialog } from '@/components/dashboard/menu/add-item-dialog'
+import { EditCategoryDialog } from '@/components/dashboard/menu/edit-category-dialog'
 
 interface Category {
     id: string
@@ -41,10 +42,13 @@ interface CategoriesListProps {
 
 export function CategoriesList({ categories, items }: CategoriesListProps) {
     const [activeDialogCategory, setActiveDialogCategory] = useState<string | null>(null)
+    const [editCategoryId, setEditCategoryId] = useState<string | null>(null)
 
     const getItemsForCategory = (categoryId: string) => {
         return items.filter((item) => item.category_id === categoryId)
     }
+
+    const categoryToEdit = editCategoryId ? categories.find(c => c.id === editCategoryId) : null
 
     return (
         <>
@@ -57,6 +61,7 @@ export function CategoriesList({ categories, items }: CategoriesListProps) {
                             category={category}
                             itemCount={categoryItems.length}
                             onAddItem={() => setActiveDialogCategory(category.id)}
+                            onEdit={() => setEditCategoryId(category.id)}
                         >
                             {categoryItems.length > 0 ? (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
@@ -74,7 +79,7 @@ export function CategoriesList({ categories, items }: CategoriesListProps) {
                 })}
             </div>
 
-            {/* Dialogs for each category */}
+            {/* Add Item Dialogs for each category */}
             {categories.map((category) => (
                 <AddItemDialog
                     key={`dialog-${category.id}`}
@@ -87,6 +92,17 @@ export function CategoriesList({ categories, items }: CategoriesListProps) {
                     }}
                 />
             ))}
+
+            {/* Edit Category Dialog */}
+            {categoryToEdit && (
+                <EditCategoryDialog
+                    category={categoryToEdit}
+                    open={!!editCategoryId}
+                    onOpenChange={(open) => {
+                        if (!open) setEditCategoryId(null)
+                    }}
+                />
+            )}
         </>
     )
 }
