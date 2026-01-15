@@ -12,6 +12,7 @@ interface OrderItem {
 
 interface CreateOrderData {
     restaurantId: string
+    userId?: string
     customerName: string
     customerPhone: string
     customerAddress: string | null
@@ -33,6 +34,7 @@ export async function createOrder(data: CreateOrderData) {
         // Debug: Log incoming data
         console.log('Creating order with data:', {
             restaurantId: data.restaurantId,
+            userId: data.userId,
             customerName: data.customerName,
             itemsCount: data.items?.length,
             items: data.items
@@ -51,6 +53,7 @@ export async function createOrder(data: CreateOrderData) {
             .from('orders')
             .insert({
                 restaurant_id: data.restaurantId,
+                user_id: data.userId, // Link to user
                 order_number: orderNumber,
                 customer_name: data.customerName,
                 customer_phone: data.customerPhone,
