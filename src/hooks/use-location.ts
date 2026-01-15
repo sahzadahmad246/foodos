@@ -25,10 +25,10 @@ interface Address {
     longitude: number
     locality: string | null
     flat_building?: string
-    landmark?: string
-    city?: string
-    state?: string
-    pincode?: string
+    landmark?: string | null
+    city?: string | null
+    state?: string | null
+    pincode?: string | null
     address_type?: string
     is_default?: boolean
 }
