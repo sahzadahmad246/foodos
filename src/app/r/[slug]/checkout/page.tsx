@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
-import { notFound } from "next/navigation"
+import { notFound, redirect } from "next/navigation"
 import { CheckoutForm } from "@/components/customer/checkout-form"
 
 export const dynamic = "force-dynamic"
@@ -15,6 +15,11 @@ export default async function CheckoutPage({ params }: PageProps) {
     // Get current user
     const { data: { user } } = await supabase.auth.getUser()
 
+    // Redirect to login if not authenticated
+    if (!user) {
+        redirect(`/login?redirect=/r/${slug}/checkout`)
+    }
+
     // Fetch restaurant by slug with settings
     const { data: restaurant, error } = await supabase
         .from("restaurants")
@@ -24,6 +29,11 @@ export default async function CheckoutPage({ params }: PageProps) {
         `)
         .eq("slug", slug)
         .single()
+
+    // Debug logging
+    console.log('Checkout - Restaurant:', restaurant?.name)
+    console.log('Checkout - Settings:', restaurant?.restaurant_settings)
+    console.log('Checkout - Error:', error)
 
     if (!restaurant) {
         notFound()

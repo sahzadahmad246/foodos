@@ -15,38 +15,20 @@ export default async function CustomerOrdersPage() {
         redirect('/login')
     }
 
-    // Fetch user's orders using phone number
-    // Note: This relies on the user's updated phone number match
-    let query = supabase
+    console.log('Fetching orders for user:', user.id)
+
+    // Fetch user's orders by user_id
+    const { data: orders, error } = await supabase
         .from('orders')
         .select(`
             *,
             restaurant:restaurants(name, logo_url),
             order_items(*)
         `)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false })
 
-    if (user.phone) {
-        // Since we don't have user_id in orders table yet, we filter by phone
-        // Also handling potential format differences (with/without country code) is tricky solely on DB side
-        // For now, we try to match exact phone or variations if possible, but exact match is safest
-        query = query.eq('customer_phone', user.phone)
-    } else if (user.email) {
-        // Fallback to searching by metadata phone if available or empty result
-        const phone = user.user_metadata?.phone || user.user_metadata?.mobile
-        if (phone) {
-            query = query.eq('customer_phone', phone)
-        } else {
-            // If no phone found, return empty or handle gracefully
-            // We can't query by user_id as it doesn't exist
-            // Returning empty result for safety
-            query = query.eq('id', '00000000-0000-0000-0000-000000000000') // Dummy impossible ID
-        }
-    } else {
-        query = query.eq('id', '00000000-0000-0000-0000-000000000000')
-    }
-
-    const { data: orders, error } = await query
+    console.log('Orders found:', orders?.length || 0, 'Error:', error)
 
     if (error) {
         console.error('Error fetching orders:', error)

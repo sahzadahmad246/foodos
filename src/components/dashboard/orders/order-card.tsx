@@ -240,15 +240,18 @@ export function OrderCard({ order }: OrderCardProps) {
                                     )}
                                     Mark Ready
                                 </Button>
-                                <Button
-                                    variant="outline"
-                                    disabled={true}
-                                    className="flex-1"
-                                    title="Rider assignment coming soon"
-                                >
-                                    <UserPlus className="h-4 w-4 mr-2" />
-                                    Assign Rider
-                                </Button>
+                                {/* Only show Assign Rider for delivery orders */}
+                                {order.customer_address && (
+                                    <Button
+                                        variant="outline"
+                                        disabled={true}
+                                        className="flex-1"
+                                        title="Rider assignment coming soon"
+                                    >
+                                        <UserPlus className="h-4 w-4 mr-2" />
+                                        Assign Rider
+                                    </Button>
+                                )}
                             </>
                         )}
 

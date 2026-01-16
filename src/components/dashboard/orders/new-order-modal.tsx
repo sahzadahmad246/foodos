@@ -108,9 +108,9 @@ export function NewOrderModal({ order, open, onClose }: NewOrderModalProps) {
 
     return (
         <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-            <DialogContent className="max-w-md p-0 overflow-hidden border-2 border-primary animate-pulse-border">
+            <DialogContent className="max-w-md p-0 overflow-hidden border-2 border-primary animate-pulse-border max-h-[90vh] flex flex-col">
                 {/* Animated Header */}
-                <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground p-6 text-center">
+                <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground p-6 text-center flex-shrink-0">
                     <div className="animate-bounce mb-2">
                         <Package className="h-12 w-12 mx-auto" />
                     </div>
@@ -120,8 +120,8 @@ export function NewOrderModal({ order, open, onClose }: NewOrderModalProps) {
                     </p>
                 </div>
 
-                {/* Order Details */}
-                <div className="p-4 space-y-4">
+                {/* Order Details - Scrollable */}
+                <div className="p-4 space-y-4 overflow-y-auto flex-1">
                     {/* Customer Info */}
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
@@ -201,7 +201,7 @@ export function NewOrderModal({ order, open, onClose }: NewOrderModalProps) {
                 </div>
 
                 {/* Action Buttons */}
-                <div className="grid grid-cols-2 gap-3 p-4 bg-muted/30 border-t">
+                <div className="grid grid-cols-2 gap-3 p-4 bg-muted/30 border-t flex-shrink-0">
                     <Button
                         variant="outline"
                         size="lg"
