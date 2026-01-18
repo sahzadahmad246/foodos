@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { notFound, redirect } from "next/navigation"
-import { OrderConfirmation } from "@/components/customer/order-confirmation"
+import OrderConfirmation from "@/components/customer/order-confirmation"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
