@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import { RiderStatusToggle } from "@/components/rider/status-toggle"
 import { RealtimeRiderOrders } from "@/components/rider/realtime-rider-orders"
+import { RiderReturnCard } from "@/components/rider/return-card"
 import { UserDropdown } from "@/components/user-dropdown"
 
 export const dynamic = "force-dynamic"
@@ -23,7 +24,7 @@ export default async function RiderDashboardPage() {
         .from("riders")
         .select(`
             *,
-            restaurant:restaurants(id, name)
+            restaurant:restaurants(id, name, latitude, longitude, address_line1)
         `)
         .eq("email", user.email)
         .single()
@@ -59,8 +60,8 @@ export default async function RiderDashboardPage() {
             payment_method,
             status,
             created_at,
-            restaurant:restaurants(name, phone)
-        `)
+            restaurant: restaurants(name, phone)
+            `)
         .eq("rider_id", rider.id)
         .in("status", ["ready", "out_for_delivery"])
         .order("created_at", { ascending: false })
@@ -98,7 +99,8 @@ export default async function RiderDashboardPage() {
                                 <p className="text-sm text-muted-foreground mt-1">
                                     {rider.status === 'online' ? 'You are available for deliveries' :
                                         rider.status === 'on_delivery' ? 'You have an active delivery' :
-                                            'Go online to receive orders'}
+                                            rider.status === 'returning' ? 'Return to restaurant to take new orders' :
+                                                'Go online to receive orders'}
                                 </p>
                             </div>
                             <RiderStatusToggle
@@ -107,6 +109,11 @@ export default async function RiderDashboardPage() {
                             />
                         </div>
                     </div>
+
+                    {/* Returning Card */}
+                    {rider.status === 'returning' && (
+                        <RiderReturnCard riderId={rider.id} restaurant={rider.restaurant} />
+                    )}
 
                     {/* Assigned Orders */}
                     <div>
@@ -129,7 +136,7 @@ export default async function RiderDashboardPage() {
                                 {orders.map((order) => (
                                     <div
                                         key={order.id}
-                                        className={`p-5 rounded-2xl border bg-card ${order.payment_method === 'cod' ? 'border-2 border-amber-400 bg-amber-50/50 dark:bg-amber-950/20' : ''}`}
+                                        className={`p - 5 rounded - 2xl border bg - card ${order.payment_method === 'cod' ? 'border-2 border-amber-400 bg-amber-50/50 dark:bg-amber-950/20' : ''}`}
                                     >
                                         <div className="flex items-start justify-between mb-4">
                                             <div>
@@ -166,7 +173,7 @@ export default async function RiderDashboardPage() {
                                         <div className="flex items-center gap-3">
                                             {order.customer_phone && (
                                                 <Button variant="outline" size="sm" asChild className="flex-1">
-                                                    <a href={`tel:${order.customer_phone}`}>
+                                                    <a href={`tel: ${order.customer_phone}`}>
                                                         <Phone className="h-4 w-4 mr-2" />
                                                         Call Customer
                                                     </a>
@@ -183,12 +190,12 @@ export default async function RiderDashboardPage() {
                                                 >
                                                     <Navigation className="h-4 w-4 mr-2" />
                                                     Navigate
-                                                </a>
-                                            </Button>
-                                        </div>
+                                                </a >
+                                            </Button >
+                                        </div >
 
                                         {/* Order Amount & Action */}
-                                        <div className="mt-4 pt-4 border-t flex items-center justify-between">
+                                        < div className="mt-4 pt-4 border-t flex items-center justify-between" >
                                             <div>
                                                 <p className="text-sm text-muted-foreground">Order Total</p>
                                                 <p className="font-bold text-xl">₹{order.total_amount}</p>
@@ -198,14 +205,14 @@ export default async function RiderDashboardPage() {
                                                     {order.status === 'ready' ? 'Pick Up Order' : 'Mark Delivered'}
                                                 </Link>
                                             </Button>
-                                        </div>
-                                    </div>
+                                        </div >
+                                    </div >
                                 ))}
-                            </div>
+                            </div >
                         )}
-                    </div>
-                </div>
-            </div>
-        </RealtimeRiderOrders>
+                    </div >
+                </div >
+            </div >
+        </RealtimeRiderOrders >
     )
 }

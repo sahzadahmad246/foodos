@@ -176,6 +176,16 @@ export function OrderCard({ order }: OrderCardProps) {
                         </div>
                     )}
 
+                    {/* Rider Info */}
+                    {order.customer_address && order.rider && (
+                        <div className="flex items-center gap-2 text-sm bg-blue-50 dark:bg-blue-950/30 p-2.5 rounded-lg">
+                            <Bike className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                            <span className="text-blue-700 dark:text-blue-400">
+                                Rider: <strong>{order.rider.name}</strong>
+                            </span>
+                        </div>
+                    )}
+
                     {/* Order Items */}
                     <div className="bg-background/50 rounded-lg p-3 space-y-1.5">
                         <div className="flex items-center gap-2 text-sm font-medium mb-2">

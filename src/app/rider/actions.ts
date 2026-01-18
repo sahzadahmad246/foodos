@@ -114,14 +114,65 @@ export async function deliverOrder(
         return { error: 'Failed to mark as delivered' }
     }
 
-    // Update rider status back to online
+    // Update rider status to returning
     await supabase
         .from('riders')
-        .update({ status: 'online' })
+        .update({ status: 'returning' })
         .eq('id', riderId)
 
     revalidatePath('/rider')
     revalidatePath('/dashboard/orders')
+    return { success: true }
+}
+
+export async function arrivedAtRestaurant(
+    riderId: string,
+    riderLat?: number,
+    riderLng?: number
+) {
+    const supabase = await createClient()
+
+    // Get rider's restaurant coordinates
+    const { data: rider } = await supabase
+        .from('riders')
+        .select('restaurant_id, restaurants(latitude, longitude)')
+        .eq('id', riderId)
+        .single()
+
+    if (!rider || !rider.restaurants) {
+        return { error: 'Restaurant not found' }
+    }
+
+    const restaurant = rider.restaurants as any
+
+    // If rider provided location and restaurant has coordinates, check proximity
+    if (restaurant.latitude && restaurant.longitude && riderLat && riderLng) {
+        const distance = calculateDistance(
+            riderLat, riderLng,
+            restaurant.latitude, restaurant.longitude
+        )
+
+        // Must be within 100 meters
+        if (distance > 100) {
+            return {
+                error: 'You must be at the restaurant to mark as arrived',
+                distance: Math.round(distance)
+            }
+        }
+    }
+
+    // Update rider status to online
+    const { error } = await supabase
+        .from('riders')
+        .update({ status: 'online' })
+        .eq('id', riderId)
+
+    if (error) {
+        console.error('Error updating rider status:', error)
+        return { error: 'Failed to update status' }
+    }
+
+    revalidatePath('/rider')
     return { success: true }
 }
 

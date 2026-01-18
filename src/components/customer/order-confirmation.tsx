@@ -103,8 +103,25 @@ export default function OrderConfirmation({ order: initialOrder }: OrderConfirma
                     table: 'orders',
                     filter: `id=eq.${order.id}`,
                 },
-                (payload) => {
-                    setOrder((prev) => ({ ...prev, ...payload.new }))
+                async (payload) => {
+                    const newOrder = payload.new as any
+
+                    // If rider_id changed and we have a rider_id, fetch rider info
+                    if (newOrder.rider_id && newOrder.rider_id !== order.rider_id) {
+                        const { data: riderData } = await supabase
+                            .from('riders')
+                            .select('id, name, phone, status')
+                            .eq('id', newOrder.rider_id)
+                            .single()
+
+                        setOrder((prev) => ({
+                            ...prev,
+                            ...newOrder,
+                            rider: riderData
+                        }))
+                    } else {
+                        setOrder((prev) => ({ ...prev, ...newOrder }))
+                    }
                 }
             )
             .subscribe()
@@ -112,7 +129,7 @@ export default function OrderConfirmation({ order: initialOrder }: OrderConfirma
         return () => {
             supabase.removeChannel(channel)
         }
-    }, [order.id, supabase])
+    }, [order.id, order.rider_id, supabase])
 
     const currentStepIndex = STATUS_STEPS.findIndex(s => s.key === order.status)
     const isCancelled = order.status === 'cancelled'
@@ -204,8 +221,8 @@ export default function OrderConfirmation({ order: initialOrder }: OrderConfirma
                         )}
                     </div>
                     <h2 className={`text-2xl font-bold mb-2 ${isCancelled ? 'text-red-600 dark:text-red-400'
-                            : isComplete ? 'text-green-600 dark:text-green-400'
-                                : 'text-gray-900 dark:text-white'
+                        : isComplete ? 'text-green-600 dark:text-green-400'
+                            : 'text-gray-900 dark:text-white'
                         }`}>
                         {getStatusMessage()}
                     </h2>
