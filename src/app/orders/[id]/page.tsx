@@ -12,12 +12,13 @@ export default async function OrderPage({ params }: PageProps) {
     const { id } = await params
     const supabase = await createClient()
 
-    // Fetch order with items first
+    // Fetch order with items and rider
     const { data: order, error } = await supabase
         .from("orders")
         .select(`
             *,
-            order_items(*)
+            order_items(*),
+            rider:riders(id, name, phone, status)
         `)
         .eq("id", id)
         .single()

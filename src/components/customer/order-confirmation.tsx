@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import {
     CheckCircle2, MapPin, Phone, Package,
     ChefHat, Truck, PartyPopper, Store, XCircle, ArrowLeft,
-    Banknote, CreditCard, Navigation
+    Banknote, CreditCard, Navigation, Bike, User, Loader2
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
@@ -30,6 +30,13 @@ interface Restaurant {
     pincode?: string | null
 }
 
+interface Rider {
+    id: string
+    name: string
+    phone: string
+    status: string
+}
+
 interface Order {
     id: string
     order_number: string
@@ -44,8 +51,10 @@ interface Order {
     status: string
     notes: string | null
     created_at: string
+    rider_id?: string | null
     order_items: OrderItem[]
     restaurant?: Restaurant | null
+    rider?: Rider | null
 }
 
 interface OrderConfirmationProps {
@@ -194,11 +203,10 @@ export default function OrderConfirmation({ order: initialOrder }: OrderConfirma
                             </div>
                         )}
                     </div>
-                    <h2 className={`text-2xl font-bold mb-2 ${
-                        isCancelled ? 'text-red-600 dark:text-red-400'
+                    <h2 className={`text-2xl font-bold mb-2 ${isCancelled ? 'text-red-600 dark:text-red-400'
                             : isComplete ? 'text-green-600 dark:text-green-400'
                                 : 'text-gray-900 dark:text-white'
-                    }`}>
+                        }`}>
                         {getStatusMessage()}
                     </h2>
                     <p className="text-gray-600 dark:text-gray-400">{getStatusDescription()}</p>
@@ -210,15 +218,53 @@ export default function OrderConfirmation({ order: initialOrder }: OrderConfirma
                     </p>
                 </div>
 
+                {/* Rider Info Card - For delivery orders when out for delivery or assigned */}
+                {!isPickup && !isCancelled && !isComplete && (
+                    <div className="bg-white dark:bg-gray-900 rounded-2xl p-5 border-2 border-blue-200 dark:border-blue-900">
+                        <div className="flex items-center gap-4">
+                            <div className="w-14 h-14 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                                {order.rider ? (
+                                    <Bike className="h-7 w-7 text-blue-600 dark:text-blue-400" />
+                                ) : (
+                                    <div className="relative">
+                                        <User className="h-7 w-7 text-blue-400" />
+                                        <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-amber-400 rounded-full animate-pulse" />
+                                    </div>
+                                )}
+                            </div>
+                            <div className="flex-1">
+                                {order.rider ? (
+                                    <>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400">Your delivery partner</p>
+                                        <p className="font-bold text-lg text-gray-900 dark:text-white">{order.rider.name}</p>
+                                    </>
+                                ) : (
+                                    <>
+                                        <p className="font-medium text-gray-900 dark:text-white">Assigning rider soon...</p>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400">We're finding a delivery partner</p>
+                                    </>
+                                )}
+                            </div>
+                            {order.rider?.phone && (
+                                <Button variant="outline" size="icon" asChild className="shrink-0">
+                                    <a href={`tel:${order.rider.phone}`}>
+                                        <Phone className="h-5 w-5" />
+                                    </a>
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+                )}
+
                 {/* Beautiful Stepper */}
                 {!isCancelled && (
                     <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-200 dark:border-gray-800">
                         <div className="relative">
                             {/* Background line */}
                             <div className="absolute top-6 left-0 right-0 h-1 bg-gray-200 dark:bg-gray-800 rounded-full" />
-                            
+
                             {/* Progress line */}
-                            <div 
+                            <div
                                 className="absolute top-6 left-0 h-1 bg-primary rounded-full transition-all duration-700 ease-out"
                                 style={{
                                     width: currentStepIndex >= 0

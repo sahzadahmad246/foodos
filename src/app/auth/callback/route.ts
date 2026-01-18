@@ -4,23 +4,50 @@ import { createClient } from '@/lib/supabase/server'
 export async function GET(request: Request) {
     const { searchParams, origin } = new URL(request.url)
     const code = searchParams.get('code')
-    // if "next" is in param, use it as the redirect URL
-    const next = searchParams.get('next') ?? '/dashboard'
+    const next = searchParams.get('next') // Where user was before login
 
     if (code) {
         const supabase = await createClient()
         const { error } = await supabase.auth.exchangeCodeForSession(code)
+
         if (!error) {
-            const forwardedHost = request.headers.get('x-forwarded-host') // original origin before load balancer
+            const forwardedHost = request.headers.get('x-forwarded-host')
             const isLocalEnv = process.env.NODE_ENV === 'development'
-            if (isLocalEnv) {
-                // we can be sure that there is no load balancer in between, so no need to watch for X-Forwarded-Host
-                return NextResponse.redirect(`${origin}${next}`)
-            } else if (forwardedHost) {
-                return NextResponse.redirect(`https://${forwardedHost}${next}`)
-            } else {
-                return NextResponse.redirect(`${origin}${next}`)
+            const baseUrl = isLocalEnv ? origin : (forwardedHost ? `https://${forwardedHost}` : origin)
+
+            // Get user info
+            const { data: { user } } = await supabase.auth.getUser()
+
+            if (user) {
+                // Check if user is a restaurant owner
+                const { data: restaurant } = await supabase
+                    .from('restaurants')
+                    .select('id')
+                    .eq('owner_id', user.id)
+                    .single()
+
+                if (restaurant) {
+                    // Owner - go to dashboard
+                    return NextResponse.redirect(`${baseUrl}/dashboard`)
+                }
+
+                // Check if user is a rider (by email match)
+                const { data: rider } = await supabase
+                    .from('riders')
+                    .select('id')
+                    .eq('email', user.email)
+                    .eq('is_active', true)
+                    .single()
+
+                if (rider) {
+                    // Rider - go to rider dashboard
+                    return NextResponse.redirect(`${baseUrl}/rider`)
+                }
             }
+
+            // Regular user - go to where they came from, or home
+            const redirectTo = next || '/'
+            return NextResponse.redirect(`${baseUrl}${redirectTo}`)
         }
     }
 

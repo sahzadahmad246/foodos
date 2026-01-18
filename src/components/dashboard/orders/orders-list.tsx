@@ -30,7 +30,12 @@ interface Order {
     created_at: string
     notes?: string | null
     rider_id?: string | null
+    restaurant_id: string
     order_items: OrderItem[]
+    rider?: {
+        id: string
+        name: string
+    } | null
 }
 
 interface OrdersListProps {

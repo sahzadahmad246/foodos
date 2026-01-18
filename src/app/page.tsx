@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { UserDropdown } from '@/components/user-dropdown'
 import { createClient } from '@/lib/supabase/server'
 import { EmailChangeAlert } from '@/components/email-change-alert'
+import { Store, Bike, ChefHat } from 'lucide-react'
 
 export default async function HomePage({
   searchParams,
@@ -17,6 +18,34 @@ export default async function HomePage({
   // Check if this is an email change confirmation message
   const isEmailChangePending = message?.toLowerCase().includes('confirm') &&
     message?.toLowerCase().includes('other email')
+
+  // Check user role
+  let userRole: 'owner' | 'rider' | 'user' = 'user'
+
+  if (user) {
+    // Check if owner
+    const { data: restaurant } = await supabase
+      .from('restaurants')
+      .select('id')
+      .eq('owner_id', user.id)
+      .single()
+
+    if (restaurant) {
+      userRole = 'owner'
+    } else {
+      // Check if rider
+      const { data: rider } = await supabase
+        .from('riders')
+        .select('id')
+        .eq('email', user.email)
+        .eq('is_active', true)
+        .single()
+
+      if (rider) {
+        userRole = 'rider'
+      }
+    }
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -60,12 +89,9 @@ export default async function HomePage({
         <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground">
           Streamline your orders, manage your menu, and delight your customers with foodOS.
         </p>
-        <div className="mt-10 flex justify-center gap-4">
-          {user ? (
-            <Button size="lg" asChild>
-              <Link href="/dashboard">Go to Dashboard</Link>
-            </Button>
-          ) : (
+
+        <div className="mt-10 flex flex-col sm:flex-row justify-center gap-4">
+          {!user ? (
             <>
               <Button size="lg" asChild>
                 <Link href="/signup">Get Started</Link>
@@ -74,6 +100,27 @@ export default async function HomePage({
                 <Link href="/login">Login</Link>
               </Button>
             </>
+          ) : userRole === 'owner' ? (
+            <Button size="lg" asChild className="gap-2">
+              <Link href="/dashboard">
+                <Store className="h-5 w-5" />
+                Go to Dashboard
+              </Link>
+            </Button>
+          ) : userRole === 'rider' ? (
+            <Button size="lg" asChild className="gap-2">
+              <Link href="/rider">
+                <Bike className="h-5 w-5" />
+                Rider Dashboard
+              </Link>
+            </Button>
+          ) : (
+            <Button size="lg" asChild className="gap-2">
+              <Link href="/onboarding">
+                <ChefHat className="h-5 w-5" />
+                Start Your Restaurant
+              </Link>
+            </Button>
           )}
         </div>
       </main>

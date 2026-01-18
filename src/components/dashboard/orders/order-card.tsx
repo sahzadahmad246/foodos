@@ -16,6 +16,7 @@ import {
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { acceptOrder, rejectOrder, markOrderReady } from '../actions/order-actions'
+import { AssignRiderModal } from './assign-rider-dropdown'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 
@@ -42,7 +43,12 @@ interface Order {
     created_at: string
     notes?: string | null
     rider_id?: string | null
+    restaurant_id: string
     order_items: OrderItem[]
+    rider?: {
+        id: string
+        name: string
+    } | null
 }
 
 interface OrderCardProps {
@@ -242,25 +248,29 @@ export function OrderCard({ order }: OrderCardProps) {
                                 </Button>
                                 {/* Only show Assign Rider for delivery orders */}
                                 {order.customer_address && (
-                                    <Button
-                                        variant="outline"
-                                        disabled={true}
-                                        className="flex-1"
-                                        title="Rider assignment coming soon"
-                                    >
-                                        <UserPlus className="h-4 w-4 mr-2" />
-                                        Assign Rider
-                                    </Button>
+                                    <AssignRiderModal
+                                        orderId={order.id}
+                                        restaurantId={order.restaurant_id}
+                                        currentRiderId={order.rider_id}
+                                        currentRiderName={order.rider?.name}
+                                    />
                                 )}
                             </>
                         )}
 
-                        {order.status === 'ready' && (
+                        {order.status === 'ready' && order.customer_address && (
+                            <AssignRiderModal
+                                orderId={order.id}
+                                restaurantId={order.restaurant_id}
+                                currentRiderId={order.rider_id}
+                                currentRiderName={order.rider?.name}
+                            />
+                        )}
+
+                        {order.status === 'ready' && !order.customer_address && (
                             <div className="flex-1 flex items-center justify-center gap-2 py-2 bg-muted/50 rounded-lg text-muted-foreground">
-                                <Bike className="h-4 w-4" />
-                                <span className="text-sm">
-                                    {order.rider_id ? 'Waiting for rider pickup' : 'No rider assigned yet'}
-                                </span>
+                                <Store className="h-4 w-4" />
+                                <span className="text-sm">Waiting for customer pickup</span>
                             </div>
                         )}
 
