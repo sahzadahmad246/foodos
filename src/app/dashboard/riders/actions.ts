@@ -110,6 +110,22 @@ export async function deleteRider(riderId: string) {
 export async function assignRiderToOrder(orderId: string, riderId: string) {
     const supabase = await createClient()
 
+    // First check if rider is online and available
+    const { data: rider, error: riderCheckError } = await supabase
+        .from('riders')
+        .select('id, status')
+        .eq('id', riderId)
+        .single()
+
+    if (riderCheckError || !rider) {
+        return { error: 'Rider not found' }
+    }
+
+    // Only allow assignment if rider is online
+    if (rider.status !== 'online') {
+        return { error: 'Rider is not available. Only online riders can be assigned orders.' }
+    }
+
     // Update order with rider
     const { error: orderError } = await supabase
         .from('orders')

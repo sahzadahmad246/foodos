@@ -42,11 +42,13 @@ export function AssignRiderModal({ orderId, restaurantId, currentRiderId, curren
         setIsLoading(true)
         const supabase = createClient()
 
+        // Only fetch available riders (online or on_delivery)
         const { data, error } = await supabase
             .from('riders')
             .select('id, name, phone, status')
             .eq('restaurant_id', restaurantId)
             .eq('is_active', true)
+            .in('status', ['online', 'on_delivery'])
             .order('status', { ascending: true })
 
         if (!error && data) {
@@ -60,7 +62,32 @@ export function AssignRiderModal({ orderId, restaurantId, currentRiderId, curren
             loadRiders()
             setSearch('')
         }
-    }, [open])
+
+        // Subscribe to rider status changes for realtime updates
+        const supabase = createClient()
+        const channel = supabase
+            .channel('rider-status-changes')
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'riders',
+                    filter: `restaurant_id=eq.${restaurantId}`
+                },
+                () => {
+                    // Reload riders when any rider status changes
+                    if (open) {
+                        loadRiders()
+                    }
+                }
+            )
+            .subscribe()
+
+        return () => {
+            supabase.removeChannel(channel)
+        }
+    }, [open, restaurantId])
 
     const handleAssign = (riderId: string) => {
         startTransition(async () => {
@@ -80,8 +107,10 @@ export function AssignRiderModal({ orderId, restaurantId, currentRiderId, curren
         r.phone.includes(search)
     )
 
+    // Only online riders can be assigned
     const onlineRiders = filteredRiders.filter(r => r.status === 'online')
-    const otherRiders = filteredRiders.filter(r => r.status !== 'online')
+    // On delivery riders are shown but disabled
+    const busyRiders = filteredRiders.filter(r => r.status === 'on_delivery')
 
     return (
         <>
@@ -163,26 +192,24 @@ export function AssignRiderModal({ orderId, restaurantId, currentRiderId, curren
                                     </>
                                 )}
 
-                                {otherRiders.length > 0 && (
+                                {busyRiders.length > 0 && (
                                     <>
                                         <div className="flex items-center gap-2 px-2 py-1.5 text-xs font-medium text-muted-foreground mt-2">
-                                            <Circle className="h-2 w-2 fill-gray-400 text-gray-400" />
-                                            {otherRiders.some(r => r.status === 'on_delivery') ? 'Busy / Offline' : 'Offline'} ({otherRiders.length})
+                                            <Circle className="h-2 w-2 fill-amber-400 text-amber-400" />
+                                            On Delivery ({busyRiders.length})
                                         </div>
-                                        {otherRiders.map((rider) => (
-                                            <button
+                                        {busyRiders.map((rider) => (
+                                            <div
                                                 key={rider.id}
-                                                onClick={() => handleAssign(rider.id)}
-                                                disabled={isPending || rider.id === currentRiderId || rider.status === 'on_delivery'}
-                                                className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition-colors text-left disabled:opacity-50"
+                                                className="w-full flex items-center gap-3 p-3 rounded-lg text-left opacity-50 cursor-not-allowed"
                                             >
-                                                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                                                    <User className="h-5 w-5 text-muted-foreground" />
+                                                <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                                                    <User className="h-5 w-5 text-amber-600" />
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <p className="font-medium truncate">{rider.name}</p>
                                                     <p className="text-sm text-muted-foreground">
-                                                        {rider.status === 'on_delivery' ? 'On delivery' : 'Offline'}
+                                                        Currently on delivery
                                                     </p>
                                                 </div>
                                                 {rider.id === currentRiderId && (
@@ -191,7 +218,7 @@ export function AssignRiderModal({ orderId, restaurantId, currentRiderId, curren
                                                         Assigned
                                                     </Badge>
                                                 )}
-                                            </button>
+                                            </div>
                                         ))}
                                     </>
                                 )}

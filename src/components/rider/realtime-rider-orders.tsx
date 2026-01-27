@@ -31,10 +31,16 @@ export function RealtimeRiderOrders({ riderId, children }: RealtimeRiderOrdersPr
 
                     if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
                         const newOrder = payload.new as any
+                        const oldOrder = payload.old as any
 
-                        // New order assigned
-                        if (payload.eventType === 'UPDATE' && newOrder.rider_id === riderId) {
-                            toast.success('New order assigned!')
+                        // New order assigned to this rider
+                        if (payload.eventType === 'UPDATE' && newOrder.rider_id === riderId && (!oldOrder || oldOrder.rider_id !== riderId)) {
+                            toast.success('🚴 New order assigned to you!')
+                        }
+
+                        // Order status changed to ready (preparing → ready)
+                        if (payload.eventType === 'UPDATE' && oldOrder?.status === 'preparing' && newOrder.status === 'ready') {
+                            toast.success('✅ Order is ready for pickup!')
                         }
                     }
 

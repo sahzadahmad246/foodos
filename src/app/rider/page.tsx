@@ -1,8 +1,10 @@
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
-import { Package, MapPin, Phone, Navigation, Banknote } from "lucide-react"
+import {
+    Package, MapPin, Phone, Navigation, Banknote,
+    Bike, Clock, CheckCircle2, ChefHat, ChevronRight
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import { RiderStatusToggle } from "@/components/rider/status-toggle"
 import { RealtimeRiderOrders } from "@/components/rider/realtime-rider-orders"
@@ -31,13 +33,16 @@ export default async function RiderDashboardPage() {
 
     if (!rider) {
         return (
-            <div className="min-h-screen flex items-center justify-center p-4">
+            <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-gray-900">
                 <div className="text-center max-w-md">
-                    <h1 className="text-2xl font-bold mb-4">No Rider Access</h1>
-                    <p className="text-muted-foreground mb-4">
+                    <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-800 flex items-center justify-center">
+                        <Bike className="h-10 w-10 text-gray-500 dark:text-gray-400" />
+                    </div>
+                    <h1 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">No Rider Access</h1>
+                    <p className="text-gray-600 dark:text-gray-400 mb-6">
                         You don't have rider access. Please contact your restaurant manager.
                     </p>
-                    <Button asChild>
+                    <Button asChild size="lg" className="rounded-full px-8">
                         <Link href="/">Go Home</Link>
                     </Button>
                 </div>
@@ -45,7 +50,7 @@ export default async function RiderDashboardPage() {
         )
     }
 
-    // Get assigned orders for this rider
+    // Get assigned orders for this rider (including preparing orders)
     const { data: orders } = await supabase
         .from("orders")
         .select(`
@@ -63,21 +68,80 @@ export default async function RiderDashboardPage() {
             restaurant: restaurants(name, phone)
             `)
         .eq("rider_id", rider.id)
-        .in("status", ["ready", "out_for_delivery"])
+        .in("status", ["preparing", "ready", "out_for_delivery"])
         .order("created_at", { ascending: false })
+
+    const getStatusConfig = (status: string) => {
+        switch (status) {
+            case 'online':
+                return {
+                    gradient: 'from-emerald-500 to-green-600',
+                    bgLight: 'bg-emerald-50 dark:bg-emerald-950/30',
+                    borderColor: 'border-emerald-200 dark:border-emerald-800',
+                    textColor: 'text-emerald-700 dark:text-emerald-400',
+                    dot: 'bg-emerald-500',
+                    message: 'You are available for deliveries'
+                }
+            case 'on_delivery':
+                return {
+                    gradient: 'from-blue-500 to-indigo-600',
+                    bgLight: 'bg-blue-50 dark:bg-blue-950/30',
+                    borderColor: 'border-blue-200 dark:border-blue-800',
+                    textColor: 'text-blue-700 dark:text-blue-400',
+                    dot: 'bg-blue-500',
+                    message: 'You have an active delivery'
+                }
+            case 'returning':
+                return {
+                    gradient: 'from-amber-500 to-orange-600',
+                    bgLight: 'bg-amber-50 dark:bg-amber-950/30',
+                    borderColor: 'border-amber-200 dark:border-amber-800',
+                    textColor: 'text-amber-700 dark:text-amber-400',
+                    dot: 'bg-amber-500',
+                    message: 'Return to restaurant'
+                }
+            default:
+                return {
+                    gradient: 'from-gray-400 to-gray-500',
+                    bgLight: 'bg-gray-100 dark:bg-gray-800/50',
+                    borderColor: 'border-gray-200 dark:border-gray-700',
+                    textColor: 'text-gray-600 dark:text-gray-400',
+                    dot: 'bg-gray-400',
+                    message: 'Go online to receive orders'
+                }
+        }
+    }
+
+    const statusConfig = getStatusConfig(rider.status)
+
+    const getOrderStatusLabel = (status: string) => {
+        switch (status) {
+            case 'preparing': return 'Preparing'
+            case 'ready': return 'Ready for pickup'
+            case 'out_for_delivery': return 'On the way'
+            default: return status
+        }
+    }
 
     return (
         <RealtimeRiderOrders riderId={rider.id}>
-            <div className="min-h-screen bg-background">
-                {/* Header */}
-                <header className="border-b bg-background/95 backdrop-blur sticky top-0 z-10">
-                    <div className="max-w-2xl mx-auto px-4 py-4">
+            <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
+                {/* Header with Glassmorphism */}
+                <header className="sticky top-0 z-50 border-b border-white/20 dark:border-gray-800/50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl">
+                    <div className="max-w-lg mx-auto px-4 py-4">
                         <div className="flex items-center justify-between">
-                            <div>
-                                <h1 className="text-xl font-bold">Rider Dashboard</h1>
-                                <p className="text-sm text-muted-foreground">
-                                    {rider.restaurant?.name}
-                                </p>
+                            <div className="flex items-center gap-3">
+                                <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${statusConfig.gradient} flex items-center justify-center shadow-lg`}>
+                                    <Bike className="h-6 w-6 text-white" />
+                                </div>
+                                <div>
+                                    <h1 className="text-lg font-bold text-gray-900 dark:text-white">
+                                        {rider.name || 'Rider'}
+                                    </h1>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                                        {rider.restaurant?.name}
+                                    </p>
+                                </div>
                             </div>
                             <UserDropdown
                                 user={{
@@ -90,18 +154,23 @@ export default async function RiderDashboardPage() {
                     </div>
                 </header>
 
-                <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
-                    {/* Status Card */}
-                    <div className="p-5 rounded-2xl border bg-card">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="font-semibold text-lg">Your Status</p>
-                                <p className="text-sm text-muted-foreground mt-1">
-                                    {rider.status === 'online' ? 'You are available for deliveries' :
-                                        rider.status === 'on_delivery' ? 'You have an active delivery' :
-                                            rider.status === 'returning' ? 'Return to restaurant to take new orders' :
-                                                'Go online to receive orders'}
-                                </p>
+                <div className="max-w-lg mx-auto px-4 py-6 space-y-6">
+                    {/* Status Card - Modern Design */}
+                    <div className={`relative overflow-hidden rounded-3xl border-2 ${statusConfig.borderColor} ${statusConfig.bgLight} p-6`}>
+                        <div className="relative flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className="relative">
+                                    <div className={`w-4 h-4 rounded-full ${statusConfig.dot} animate-pulse`} />
+                                    <div className={`absolute inset-0 w-4 h-4 rounded-full ${statusConfig.dot} animate-ping opacity-75`} />
+                                </div>
+                                <div>
+                                    <p className="font-bold text-lg text-gray-900 dark:text-white capitalize">
+                                        {rider.status === 'on_delivery' ? 'On Delivery' : rider.status}
+                                    </p>
+                                    <p className={`text-sm ${statusConfig.textColor}`}>
+                                        {statusConfig.message}
+                                    </p>
+                                </div>
                             </div>
                             <RiderStatusToggle
                                 riderId={rider.id}
@@ -115,104 +184,165 @@ export default async function RiderDashboardPage() {
                         <RiderReturnCard riderId={rider.id} restaurant={rider.restaurant} />
                     )}
 
-                    {/* Assigned Orders */}
+                    {/* Active Deliveries Section */}
                     <div>
-                        <h2 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                            <Package className="h-5 w-5" />
-                            Active Deliveries ({orders?.length || 0})
-                        </h2>
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                                <Package className="h-5 w-5 text-white" />
+                            </div>
+                            <div>
+                                <h2 className="font-bold text-lg text-gray-900 dark:text-white">
+                                    Active Deliveries
+                                </h2>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                    {orders?.length || 0} order{(orders?.length || 0) !== 1 ? 's' : ''} pending
+                                </p>
+                            </div>
+                        </div>
 
                         {!orders || orders.length === 0 ? (
-                            <div className="rounded-2xl border-2 border-dashed p-10 text-center">
-                                <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                                <p className="text-muted-foreground">
-                                    {rider.status === 'offline'
-                                        ? 'Go online to receive delivery orders'
-                                        : 'No orders assigned yet. Check back soon!'}
-                                </p>
+                            <div className="relative overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+                                <div className="p-10 text-center">
+                                    <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                                        <Package className="h-8 w-8 text-gray-400 dark:text-gray-500" />
+                                    </div>
+                                    <p className="text-gray-900 dark:text-white font-medium">
+                                        {rider.status === 'offline'
+                                            ? 'Go online to receive orders'
+                                            : 'Waiting for orders'}
+                                    </p>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                        {rider.status === 'offline'
+                                            ? 'Toggle your status above'
+                                            : 'New orders will appear here'}
+                                    </p>
+                                </div>
+                                {/* Animated searching bar when online */}
+                                {rider.status !== 'offline' && (
+                                    <>
+                                        <div className="h-1 bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                                            <div
+                                                className="h-full w-1/3 bg-gray-900 dark:bg-white"
+                                                style={{
+                                                    animation: 'shimmer 1.5s ease-in-out infinite'
+                                                }}
+                                            />
+                                        </div>
+                                        <style>{`
+                                            @keyframes shimmer {
+                                                0% { transform: translateX(-100%); }
+                                                100% { transform: translateX(400%); }
+                                            }
+                                        `}</style>
+                                    </>
+                                )}
                             </div>
                         ) : (
                             <div className="space-y-4">
-                                {orders.map((order) => (
-                                    <div
-                                        key={order.id}
-                                        className={`p - 5 rounded - 2xl border bg - card ${order.payment_method === 'cod' ? 'border-2 border-amber-400 bg-amber-50/50 dark:bg-amber-950/20' : ''}`}
-                                    >
-                                        <div className="flex items-start justify-between mb-4">
-                                            <div>
-                                                <div className="flex items-center gap-2">
-                                                    <p className="font-mono font-bold text-lg">{order.order_number}</p>
-                                                    {order.payment_method === 'cod' && (
-                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500 text-white text-xs font-semibold">
-                                                            <Banknote className="h-3 w-3" />
-                                                            COD
-                                                        </span>
+                                {orders.map((order) => {
+                                    const isPreparing = order.status === 'preparing'
+                                    const isReady = order.status === 'ready'
+                                    const isOnTheWay = order.status === 'out_for_delivery'
+                                    const isCOD = order.payment_method === 'cod'
+
+                                    return (
+                                        <Link
+                                            key={order.id}
+                                            href={isPreparing ? '#' : `/rider/orders/${order.id}`}
+                                            className={`block ${isPreparing ? 'cursor-not-allowed' : ''}`}
+                                        >
+                                            <div
+                                                className={`
+                                                    relative overflow-hidden rounded-2xl border bg-white dark:bg-gray-900 
+                                                    shadow-sm hover:shadow-md transition-all
+                                                    ${isPreparing ? 'opacity-70' : 'active:scale-[0.99]'}
+                                                    ${isCOD ? 'border-amber-300 dark:border-amber-700' : 'border-gray-200 dark:border-gray-800'}
+                                                `}
+                                            >
+                                                {/* Status Bar */}
+                                                <div className={`
+                                                    px-4 py-2 flex items-center justify-between text-sm font-medium
+                                                    ${isPreparing
+                                                        ? 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400'
+                                                        : isReady
+                                                            ? 'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400'
+                                                            : 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400'
+                                                    }
+                                                `}>
+                                                    <div className="flex items-center gap-2">
+                                                        {isPreparing ? (
+                                                            <ChefHat className="h-4 w-4" />
+                                                        ) : isReady ? (
+                                                            <CheckCircle2 className="h-4 w-4" />
+                                                        ) : (
+                                                            <Bike className="h-4 w-4" />
+                                                        )}
+                                                        {getOrderStatusLabel(order.status)}
+                                                    </div>
+                                                    {!isPreparing && (
+                                                        <ChevronRight className="h-4 w-4" />
                                                     )}
                                                 </div>
-                                                <p className="text-sm text-muted-foreground">
-                                                    {order.customer_name}
-                                                </p>
-                                            </div>
-                                            <Badge variant={order.status === 'out_for_delivery' ? 'default' : 'secondary'}>
-                                                {order.status === 'out_for_delivery' ? 'On the way' : 'Ready for pickup'}
-                                            </Badge>
-                                        </div>
 
-                                        {/* Customer Address */}
-                                        <div className="flex items-start gap-3 p-3 rounded-xl bg-muted/50 mb-4">
-                                            <MapPin className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-medium">Deliver to</p>
-                                                <p className="text-sm text-muted-foreground mt-0.5">
-                                                    {order.customer_address}
-                                                </p>
-                                            </div>
-                                        </div>
+                                                <div className="p-4">
+                                                    {/* Order Header */}
+                                                    <div className="flex items-start justify-between mb-3">
+                                                        <div>
+                                                            <p className="font-mono font-bold text-lg text-gray-900 dark:text-white">
+                                                                {order.order_number}
+                                                            </p>
+                                                            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                                                                <Clock className="h-3.5 w-3.5" />
+                                                                {new Date(order.created_at).toLocaleTimeString('en-IN', {
+                                                                    hour: '2-digit',
+                                                                    minute: '2-digit'
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <p className="text-xl font-bold text-gray-900 dark:text-white">
+                                                                ₹{order.total_amount}
+                                                            </p>
+                                                            {isCOD && (
+                                                                <p className="text-xs font-semibold text-amber-600 dark:text-amber-400">
+                                                                    Collect Cash
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    </div>
 
-                                        {/* Contact & Actions */}
-                                        <div className="flex items-center gap-3">
-                                            {order.customer_phone && (
-                                                <Button variant="outline" size="sm" asChild className="flex-1">
-                                                    <a href={`tel: ${order.customer_phone}`}>
-                                                        <Phone className="h-4 w-4 mr-2" />
-                                                        Call Customer
-                                                    </a>
-                                                </Button>
-                                            )}
-                                            <Button size="sm" asChild className="flex-1">
-                                                <a
-                                                    href={order.customer_latitude && order.customer_longitude
-                                                        ? `https://www.google.com/maps/dir/?api=1&destination=${order.customer_latitude},${order.customer_longitude}`
-                                                        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(order.customer_address || '')}`
-                                                    }
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                >
-                                                    <Navigation className="h-4 w-4 mr-2" />
-                                                    Navigate
-                                                </a >
-                                            </Button >
-                                        </div >
+                                                    {/* Customer & Address */}
+                                                    <div className="flex items-start gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50">
+                                                        <MapPin className="h-4 w-4 text-gray-400 mt-0.5 shrink-0" />
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                                                {order.customer_name}
+                                                            </p>
+                                                            <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1 mt-0.5">
+                                                                {order.customer_address}
+                                                            </p>
+                                                        </div>
+                                                    </div>
 
-                                        {/* Order Amount & Action */}
-                                        < div className="mt-4 pt-4 border-t flex items-center justify-between" >
-                                            <div>
-                                                <p className="text-sm text-muted-foreground">Order Total</p>
-                                                <p className="font-bold text-xl">₹{order.total_amount}</p>
+                                                    {/* COD Collection Highlight */}
+                                                    {isCOD && (
+                                                        <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                                                            <Banknote className="h-4 w-4 text-amber-600" />
+                                                            <span className="text-sm font-semibold text-amber-700 dark:text-amber-400">
+                                                                Collect ₹{order.total_amount}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
-                                            <Button asChild>
-                                                <Link href={`/rider/orders/${order.id}`}>
-                                                    {order.status === 'ready' ? 'Pick Up Order' : 'Mark Delivered'}
-                                                </Link>
-                                            </Button>
-                                        </div >
-                                    </div >
-                                ))}
-                            </div >
+                                        </Link>
+                                    )
+                                })}
+                            </div>
                         )}
-                    </div >
-                </div >
-            </div >
-        </RealtimeRiderOrders >
+                    </div>
+                </div>
+            </div>
+        </RealtimeRiderOrders>
     )
 }

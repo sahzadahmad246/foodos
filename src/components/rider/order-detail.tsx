@@ -1,14 +1,15 @@
 'use client'
 
-import { useState, useTransition, useEffect } from 'react'
+import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
     ArrowLeft, MapPin, Phone, Package, Store,
-    Navigation, CheckCircle2, Loader2, AlertCircle, MapPinOff
+    Navigation, CheckCircle2, Loader2, AlertCircle, MapPinOff,
+    Banknote, CreditCard, Check
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
     AlertDialog,
     AlertDialogAction,
@@ -41,6 +42,7 @@ interface Order {
     payment_method: string
     status: string
     notes: string | null
+    created_at?: string
     order_items: OrderItem[]
     restaurant?: {
         name: string
@@ -62,8 +64,12 @@ export function RiderOrderDetail({ order, riderId }: RiderOrderDetailProps) {
     const [riderLocation, setRiderLocation] = useState<{ lat: number; lng: number } | null>(null)
     const [locationError, setLocationError] = useState<string | null>(null)
     const [isGettingLocation, setIsGettingLocation] = useState(false)
+    const [paymentCollected, setPaymentCollected] = useState(false)
 
-    // Get rider location when dialog opens
+    const isReady = order.status === 'ready'
+    const isOnTheWay = order.status === 'out_for_delivery'
+    const isCOD = order.payment_method === 'cod'
+
     const getRiderLocation = () => {
         if (!navigator.geolocation) {
             setLocationError('Location not supported by your browser')
@@ -130,11 +136,9 @@ export function RiderOrderDetail({ order, riderId }: RiderOrderDetailProps) {
     }
 
     const getDirectionsUrl = () => {
-        // Prefer coordinates if available
         if (order.customer_latitude && order.customer_longitude) {
             return `https://www.google.com/maps/dir/?api=1&destination=${order.customer_latitude},${order.customer_longitude}`
         }
-        // Fallback to text search
         if (order.customer_address) {
             return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(order.customer_address)}`
         }
@@ -145,211 +149,327 @@ export function RiderOrderDetail({ order, riderId }: RiderOrderDetailProps) {
         ? [order.restaurant.address_line1, order.restaurant.city].filter(Boolean).join(', ')
         : null
 
+    const canMarkDelivered = !isCOD || paymentCollected
+
     return (
-        <div className="min-h-screen bg-background">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-950 pb-24">
             {/* Header */}
-            <header className="border-b bg-background/95 backdrop-blur sticky top-0 z-10">
-                <div className="max-w-2xl mx-auto px-4 py-4">
+            <header className="sticky top-0 z-50 border-b bg-white dark:bg-gray-900">
+                <div className="max-w-lg mx-auto px-4 py-4">
                     <div className="flex items-center gap-4">
-                        <Button variant="ghost" size="icon" asChild>
-                            <Link href="/rider">
-                                <ArrowLeft className="h-5 w-5" />
-                            </Link>
-                        </Button>
+                        <Link href="/rider">
+                            <button className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                                <ArrowLeft className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+                            </button>
+                        </Link>
                         <div className="flex-1">
-                            <h1 className="font-bold text-lg">{order.order_number}</h1>
-                            <p className="text-sm text-muted-foreground">
+                            <h1 className="font-bold text-lg text-gray-900 dark:text-white">
+                                {order.order_number}
+                            </h1>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
                                 {order.customer_name}
                             </p>
                         </div>
-                        <Badge variant={order.status === 'out_for_delivery' ? 'default' : 'secondary'}>
-                            {order.status === 'out_for_delivery' ? 'Delivering' : 'Ready'}
-                        </Badge>
                     </div>
                 </div>
             </header>
 
-            <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
-                {/* Status Steps */}
-                <div className="flex items-center justify-between text-sm">
-                    <div className={`flex flex-col items-center ${order.status !== 'ready' ? 'text-green-600' : 'text-muted-foreground'}`}>
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-1 ${order.status !== 'ready' ? 'bg-green-100' : 'bg-muted'}`}>
-                            <Store className="h-5 w-5" />
+            <div className="max-w-lg mx-auto px-4 py-5 space-y-4">
+                {/* Simple Stepper */}
+                <div className="bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-200 dark:border-gray-800">
+                    <div className="relative flex items-start justify-between">
+                        {/* Connecting Line - absolute positioned to touch icons */}
+                        <div className="absolute top-5 left-5 right-5 flex items-center" style={{ transform: 'translateY(-50%)' }}>
+                            <div className="w-5" /> {/* Spacer for first icon */}
+                            <div className={`flex-1 h-0.5 ${isOnTheWay ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-700'}`} />
+                            <div className="w-5" /> {/* Spacer for second icon */}
                         </div>
-                        <span>Pickup</span>
-                    </div>
-                    <div className={`flex-1 h-1 mx-2 rounded ${order.status === 'out_for_delivery' ? 'bg-green-500' : 'bg-muted'}`} />
-                    <div className={`flex flex-col items-center ${order.status === 'delivered' ? 'text-green-600' : 'text-muted-foreground'}`}>
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-1 ${order.status === 'delivered' ? 'bg-green-100' : 'bg-muted'}`}>
-                            <CheckCircle2 className="h-5 w-5" />
+
+                        {/* Step 1: Pickup */}
+                        <div className="relative z-10 flex flex-col items-center gap-2">
+                            <div className={`
+                                w-10 h-10 rounded-full flex items-center justify-center border-2 bg-white dark:bg-gray-900 transition-all
+                                ${!isReady
+                                    ? 'border-green-500 text-green-500'
+                                    : 'border-gray-300 dark:border-gray-600 text-gray-400'
+                                }
+                            `}>
+                                {!isReady ? <Check className="h-5 w-5" /> : <span className="font-semibold text-sm">1</span>}
+                            </div>
+                            <span className={`text-sm font-medium ${!isReady ? 'text-green-600 dark:text-green-400' : 'text-gray-500'}`}>
+                                Pickup
+                            </span>
                         </div>
-                        <span>Delivered</span>
+
+                        {/* Step 2: Deliver */}
+                        <div className="relative z-10 flex flex-col items-center gap-2">
+                            <div className={`
+                                w-10 h-10 rounded-full flex items-center justify-center border-2 bg-white dark:bg-gray-900 transition-all
+                                ${isOnTheWay
+                                    ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white'
+                                    : 'border-gray-300 dark:border-gray-600 text-gray-400'
+                                }
+                            `}>
+                                <span className="font-semibold text-sm">2</span>
+                            </div>
+                            <span className={`text-sm font-medium ${isOnTheWay ? 'text-gray-900 dark:text-white' : 'text-gray-500'}`}>
+                                Deliver
+                            </span>
+                        </div>
                     </div>
                 </div>
 
-                {/* Restaurant Pickup */}
-                {order.status === 'ready' && (
-                    <div className="p-5 rounded-2xl border-2 border-primary/20 bg-primary/5">
-                        <div className="flex items-start gap-4 mb-4">
-                            <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center">
-                                <Store className="h-6 w-6 text-primary" />
+                {/* Restaurant Pickup Card */}
+                {isReady && (
+                    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+                        <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Store className="h-4 w-4 text-gray-500" />
+                                <span className="font-medium text-sm text-gray-900 dark:text-white">Pickup Location</span>
                             </div>
-                            <div className="flex-1">
-                                <p className="font-semibold text-lg">Pick up from</p>
-                                <p className="text-muted-foreground">{order.restaurant?.name}</p>
-                                {restaurantAddress && (
-                                    <p className="text-sm text-muted-foreground mt-1">{restaurantAddress}</p>
+                            {order.restaurant?.phone && (
+                                <a
+                                    href={`tel:${order.restaurant.phone}`}
+                                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                                >
+                                    <Phone className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                                </a>
+                            )}
+                        </div>
+                        <div className="p-4">
+                            <p className="font-semibold text-gray-900 dark:text-white">
+                                {order.restaurant?.name}
+                            </p>
+                            {restaurantAddress && (
+                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                    {restaurantAddress}
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* Delivery Destination Card */}
+                {order.customer_address && (
+                    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+                        <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2">
+                            <MapPin className="h-4 w-4 text-gray-500" />
+                            <span className="font-medium text-sm text-gray-900 dark:text-white">Delivery Address</span>
+                        </div>
+                        <div className="p-4">
+                            <p className="font-semibold text-gray-900 dark:text-white">
+                                {order.customer_name}
+                            </p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                {order.customer_address}
+                            </p>
+
+                            <div className="flex gap-3 mt-4">
+                                {order.customer_phone && (
+                                    <Button variant="outline" asChild className="flex-1 h-10 rounded-xl text-sm">
+                                        <a href={`tel:${order.customer_phone}`}>
+                                            <Phone className="h-4 w-4 mr-2" />
+                                            Call
+                                        </a>
+                                    </Button>
+                                )}
+                                {getDirectionsUrl() && (
+                                    <Button variant="outline" asChild className="flex-1 h-10 rounded-xl text-sm">
+                                        <a href={getDirectionsUrl()!} target="_blank" rel="noopener noreferrer">
+                                            <Navigation className="h-4 w-4 mr-2" />
+                                            Navigate
+                                        </a>
+                                    </Button>
                                 )}
                             </div>
                         </div>
-                        {order.restaurant?.phone && (
-                            <Button variant="outline" asChild className="w-full mb-3">
-                                <a href={`tel:${order.restaurant.phone}`}>
-                                    <Phone className="h-4 w-4 mr-2" />
-                                    Call Restaurant
-                                </a>
-                            </Button>
-                        )}
-                        <Button onClick={handlePickup} className="w-full" disabled={isPending}>
-                            {isPending ? (
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            ) : (
-                                <Package className="h-4 w-4 mr-2" />
-                            )}
-                            Confirm Pickup
-                        </Button>
                     </div>
                 )}
 
-                {/* Delivery Destination */}
-                {order.customer_address && (
-                    <div className={`p-5 rounded-2xl border ${order.status === 'out_for_delivery' ? 'border-2 border-primary/20 bg-primary/5' : 'bg-card'}`}>
-                        <div className="flex items-start gap-4 mb-4">
-                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${order.status === 'out_for_delivery' ? 'bg-primary/20' : 'bg-muted'}`}>
-                                <MapPin className={`h-6 w-6 ${order.status === 'out_for_delivery' ? 'text-primary' : 'text-muted-foreground'}`} />
-                            </div>
-                            <div className="flex-1">
-                                <p className="font-semibold text-lg">Deliver to</p>
-                                <p className="font-medium">{order.customer_name}</p>
-                                <p className="text-sm text-muted-foreground mt-1">{order.customer_address}</p>
-                            </div>
-                        </div>
+                {/* Payment Section */}
+                <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+                    <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2">
+                        {isCOD ? <Banknote className="h-4 w-4 text-gray-500" /> : <CreditCard className="h-4 w-4 text-gray-500" />}
+                        <span className="font-medium text-sm text-gray-900 dark:text-white">Payment</span>
+                    </div>
+                    <div className="p-4">
+                        {isCOD ? (
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="font-medium text-gray-900 dark:text-white">Cash on Delivery</p>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400">Collect from customer</p>
+                                    </div>
+                                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                                        ₹{order.total_amount}
+                                    </p>
+                                </div>
 
-                        <div className="flex gap-3">
-                            {order.customer_phone && (
-                                <Button variant="outline" asChild className="flex-1">
-                                    <a href={`tel:${order.customer_phone}`}>
-                                        <Phone className="h-4 w-4 mr-2" />
-                                        Call
-                                    </a>
-                                </Button>
-                            )}
-                            {getDirectionsUrl() && (
-                                <Button variant="outline" asChild className="flex-1">
-                                    <a href={getDirectionsUrl()!} target="_blank" rel="noopener noreferrer">
-                                        <Navigation className="h-4 w-4 mr-2" />
-                                        Navigate
-                                    </a>
-                                </Button>
-                            )}
-                        </div>
-
-                        {order.status === 'out_for_delivery' && (
-                            <Button
-                                onClick={openDeliverDialog}
-                                className="w-full mt-4 bg-green-600 hover:bg-green-700"
-                                disabled={isPending}
-                            >
-                                <CheckCircle2 className="h-4 w-4 mr-2" />
-                                Mark as Delivered
-                            </Button>
+                                {isOnTheWay && (
+                                    <label className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                                        <Checkbox
+                                            id="payment-collected"
+                                            checked={paymentCollected}
+                                            onCheckedChange={(checked) => setPaymentCollected(checked === true)}
+                                            className="h-5 w-5"
+                                        />
+                                        <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                            I have collected ₹{order.total_amount}
+                                        </span>
+                                    </label>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="font-medium text-gray-900 dark:text-white">Paid Online</p>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">No collection needed</p>
+                                </div>
+                                <CheckCircle2 className="h-5 w-5 text-green-500" />
+                            </div>
                         )}
                     </div>
-                )}
+                </div>
 
                 {/* Order Items */}
-                <div className="rounded-2xl border bg-card overflow-hidden">
-                    <div className="px-5 py-4 bg-muted/50 border-b">
-                        <h3 className="font-semibold">Order Items</h3>
+                <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+                    <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2">
+                        <Package className="h-4 w-4 text-gray-500" />
+                        <span className="font-medium text-sm text-gray-900 dark:text-white">Order Items</span>
                     </div>
-                    <div className="divide-y">
+                    <div className="divide-y divide-gray-100 dark:divide-gray-800">
                         {order.order_items.map((item) => (
-                            <div key={item.id} className="px-5 py-3 flex justify-between">
-                                <div>
-                                    <p className="font-medium">{item.name}</p>
-                                    <p className="text-sm text-muted-foreground">Qty: {item.quantity}</p>
+                            <div key={item.id} className="px-4 py-3 flex justify-between items-start">
+                                <div className="flex-1">
+                                    <p className="text-sm font-medium text-gray-900 dark:text-white">{item.name}</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                        {item.quantity} × ₹{item.price}
+                                    </p>
                                 </div>
-                                <p className="font-medium">₹{item.price * item.quantity}</p>
+                                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                    ₹{item.price * item.quantity}
+                                </p>
                             </div>
                         ))}
                     </div>
-                    <div className="px-5 py-4 bg-muted/50 border-t flex justify-between items-center">
-                        <span className="font-semibold">Total</span>
-                        <span className="font-bold text-xl">₹{order.total_amount}</span>
+                    <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50">
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">Total</span>
+                        <span className="font-bold text-gray-900 dark:text-white">₹{order.total_amount}</span>
                     </div>
-                    {order.payment_method === 'cod' && (
-                        <div className="px-5 py-3 bg-amber-50 text-amber-800 text-sm flex items-center gap-2">
-                            <AlertCircle className="h-4 w-4" />
-                            Collect ₹{order.total_amount} cash on delivery
-                        </div>
-                    )}
                 </div>
 
                 {/* Notes */}
                 {order.notes && (
-                    <div className="p-4 rounded-xl bg-amber-50 border border-amber-200">
-                        <p className="text-sm"><strong>Note:</strong> {order.notes}</p>
+                    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+                        <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2">
+                            <AlertCircle className="h-4 w-4 text-gray-500" />
+                            <span className="font-medium text-sm text-gray-900 dark:text-white">Customer Note</span>
+                        </div>
+                        <div className="p-4">
+                            <p className="text-sm text-gray-700 dark:text-gray-300">{order.notes}</p>
+                        </div>
                     </div>
                 )}
             </div>
 
+            {/* Sticky Bottom Button */}
+            {isReady && (
+                <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 p-4 z-50">
+                    <div className="max-w-lg mx-auto">
+                        <Button
+                            onClick={handlePickup}
+                            disabled={isPending}
+                            size="lg"
+                            className="w-full h-12 rounded-xl font-semibold"
+                        >
+                            {isPending ? (
+                                <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                            ) : (
+                                <Package className="h-5 w-5 mr-2" />
+                            )}
+                            Confirm Pickup
+                        </Button>
+                    </div>
+                </div>
+            )}
+
+            {isOnTheWay && (
+                <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 p-4 z-50">
+                    <div className="max-w-lg mx-auto">
+                        <Button
+                            onClick={openDeliverDialog}
+                            disabled={isPending || !canMarkDelivered}
+                            size="lg"
+                            className={`w-full h-12 rounded-xl font-semibold ${canMarkDelivered
+                                ? 'bg-green-600 hover:bg-green-700'
+                                : 'bg-gray-300 dark:bg-gray-700 cursor-not-allowed'
+                                }`}
+                        >
+                            {!canMarkDelivered ? (
+                                'Collect payment to continue'
+                            ) : (
+                                <>
+                                    <CheckCircle2 className="h-5 w-5 mr-2" />
+                                    Mark as Delivered
+                                </>
+                            )}
+                        </Button>
+                    </div>
+                </div>
+            )}
+
             {/* Delivery Confirmation Dialog */}
             <AlertDialog open={showDeliverDialog} onOpenChange={setShowDeliverDialog}>
-                <AlertDialogContent>
+                <AlertDialogContent className="rounded-2xl mx-4">
                     <AlertDialogHeader>
                         <AlertDialogTitle>Confirm Delivery</AlertDialogTitle>
-                        <AlertDialogDescription className="space-y-3">
-                            <span className="block">
-                                Are you sure you have delivered order {order.order_number} to {order.customer_name}?
-                            </span>
+                        <AlertDialogDescription asChild>
+                            <div className="space-y-3">
+                                <p className="text-gray-600 dark:text-gray-400">
+                                    Confirm delivery of <span className="font-medium text-gray-900 dark:text-white">{order.order_number}</span> to <span className="font-medium text-gray-900 dark:text-white">{order.customer_name}</span>?
+                                </p>
 
-                            {isGettingLocation && (
-                                <span className="flex items-center gap-2 text-blue-600">
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                    Getting your location...
-                                </span>
-                            )}
+                                {isGettingLocation && (
+                                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        Getting location...
+                                    </div>
+                                )}
 
-                            {locationError && (
-                                <span className="flex items-center gap-2 text-amber-600">
-                                    <MapPinOff className="h-4 w-4" />
-                                    {locationError}
-                                </span>
-                            )}
+                                {locationError && (
+                                    <div className="flex items-center gap-2 text-sm text-amber-600">
+                                        <MapPinOff className="h-4 w-4" />
+                                        {locationError}
+                                    </div>
+                                )}
 
-                            {riderLocation && !locationError && (
-                                <span className="flex items-center gap-2 text-green-600">
-                                    <MapPin className="h-4 w-4" />
-                                    Location verified
-                                </span>
-                            )}
+                                {riderLocation && !locationError && (
+                                    <div className="flex items-center gap-2 text-sm text-green-600">
+                                        <MapPin className="h-4 w-4" />
+                                        Location verified
+                                    </div>
+                                )}
 
-                            {order.payment_method === 'cod' && (
-                                <span className="block font-medium text-amber-600">
-                                    Make sure you've collected ₹{order.total_amount} cash.
-                                </span>
-                            )}
+                                {isCOD && (
+                                    <div className="flex items-center gap-2 text-sm text-green-600">
+                                        <CheckCircle2 className="h-4 w-4" />
+                                        ₹{order.total_amount} collected
+                                    </div>
+                                )}
+                            </div>
                         </AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+                    <AlertDialogFooter className="gap-2">
+                        <AlertDialogCancel disabled={isPending} className="rounded-xl">
+                            Cancel
+                        </AlertDialogCancel>
                         <AlertDialogAction
                             onClick={handleDeliver}
                             disabled={isPending || isGettingLocation}
-                            className="bg-green-600 hover:bg-green-700"
+                            className="rounded-xl bg-green-600 hover:bg-green-700"
                         >
                             {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                            Confirm Delivery
+                            Confirm
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

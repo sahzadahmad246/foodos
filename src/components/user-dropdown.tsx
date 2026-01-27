@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { User, LogOut, Mail, Key } from 'lucide-react'
+import { User, LogOut, Mail, Key, Package } from 'lucide-react'
 import { logout } from '@/app/auth/logout/actions'
 import { changeEmail } from '@/app/auth/password/actions'
 import { useState, useTransition } from 'react'
@@ -76,6 +76,13 @@ export function UserDropdown({ user }: UserDropdownProps) {
                             <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
                         </div>
                     </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                        <a href="/customer/orders">
+                            <Package className="mr-2 h-4 w-4" />
+                            <span>My Orders</span>
+                        </a>
+                    </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onSelect={() => setIsEmailDialogOpen(true)}>
                         <Mail className="mr-2 h-4 w-4" />

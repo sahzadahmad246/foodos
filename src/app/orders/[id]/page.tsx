@@ -12,24 +12,23 @@ export default async function OrderPage({ params }: PageProps) {
     const { id } = await params
     const supabase = await createClient()
 
-    // Fetch order with items and rider
+    // Fetch order with items
     const { data: order, error } = await supabase
         .from("orders")
         .select(`
             *,
-            order_items(*),
-            rider:riders(id, name, phone, status)
+            order_items(*)
         `)
         .eq("id", id)
         .single()
 
-    console.log('Order fetch result:', order?.id, 'Error:', error)
+    console.log('Order fetch result:', order?.id, 'rider_id:', order?.rider_id, 'Error:', error)
 
     if (!order) {
         notFound()
     }
 
-    // Fetch restaurant separately
+    // Fetch restaurant separately (RLS might block join)
     let restaurant = null
     if (order.restaurant_id) {
         const { data: restaurantData, error: restError } = await supabase
@@ -49,21 +48,38 @@ export default async function OrderPage({ params }: PageProps) {
             .eq("id", order.restaurant_id)
             .single()
 
-        console.log('Restaurant fetch:', restaurantData?.name, 'lat:', restaurantData?.latitude, 'Error:', restError)
+        console.log('Restaurant fetch:', restaurantData?.name, 'Error:', restError)
         restaurant = restaurantData
     }
 
-    // Combine order with restaurant
-    const orderWithRestaurant = {
+    // Fetch rider separately (RLS might block join)
+    let rider = null
+    if (order.rider_id) {
+        const { data: riderData, error: riderError } = await supabase
+            .from("riders")
+            .select(`
+                id,
+                name,
+                phone,
+                status
+            `)
+            .eq("id", order.rider_id)
+            .single()
+
+        console.log('Rider fetch:', riderData?.name, 'status:', riderData?.status, 'Error:', riderError)
+        rider = riderData
+    }
+
+    // Combine order with restaurant and rider
+    const orderWithDetails = {
         ...order,
-        restaurant
+        restaurant,
+        rider
     }
 
     return (
         <div className="min-h-screen bg-background">
-            <div className="max-w-xl mx-auto px-4">
-                <OrderConfirmation order={orderWithRestaurant} />
-            </div>
+            <OrderConfirmation order={orderWithDetails} />
         </div>
     )
 }
