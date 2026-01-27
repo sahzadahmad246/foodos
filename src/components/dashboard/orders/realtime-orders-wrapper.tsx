@@ -26,6 +26,12 @@ interface Order {
     payment_status: string
     status: string
     created_at: string
+    confirmed_at?: string | null
+    preparing_at?: string | null
+    ready_at?: string | null
+    picked_up_at?: string | null
+    delivered_at?: string | null
+    cancelled_at?: string | null
     notes?: string | null
     rider_id?: string | null
     restaurant_id: string
@@ -102,13 +108,25 @@ export function RealtimeOrdersWrapper({ initialOrders, restaurantId }: RealtimeO
                     table: 'orders',
                     filter: `restaurant_id=eq.${restaurantId}`,
                 },
-                (payload) => {
+                async (payload) => {
                     console.log('📝 Order updated:', payload.new)
                     const updatedOrder = payload.new as Order
+
+                    // If order has a rider_id, fetch rider info
+                    let riderInfo = null
+                    if (updatedOrder.rider_id) {
+                        const { data: rider } = await supabase
+                            .from('riders')
+                            .select('id, name')
+                            .eq('id', updatedOrder.rider_id)
+                            .single()
+                        riderInfo = rider
+                    }
+
                     setOrders((prev) =>
                         prev.map((order) =>
                             order.id === updatedOrder.id
-                                ? { ...order, ...updatedOrder }
+                                ? { ...order, ...updatedOrder, rider: riderInfo || order.rider }
                                 : order
                         )
                     )

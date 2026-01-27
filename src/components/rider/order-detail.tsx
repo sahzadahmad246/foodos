@@ -43,6 +43,9 @@ interface Order {
     status: string
     notes: string | null
     created_at?: string
+    ready_at?: string | null
+    picked_up_at?: string | null
+    delivered_at?: string | null
     order_items: OrderItem[]
     restaurant?: {
         name: string
@@ -181,40 +184,71 @@ export function RiderOrderDetail({ order, riderId }: RiderOrderDetailProps) {
                         {/* Connecting Line - absolute positioned to touch icons */}
                         <div className="absolute top-5 left-5 right-5 flex items-center" style={{ transform: 'translateY(-50%)' }}>
                             <div className="w-5" /> {/* Spacer for first icon */}
-                            <div className={`flex-1 h-0.5 ${isOnTheWay ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-700'}`} />
+                            {/* Line is green if Pickup is completed (meaning we are at least out_for_delivery) */}
+                            <div className={`flex-1 h-0.5 ${['out_for_delivery', 'delivered'].includes(order.status) ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-700'}`} />
                             <div className="w-5" /> {/* Spacer for second icon */}
                         </div>
 
                         {/* Step 1: Pickup */}
-                        <div className="relative z-10 flex flex-col items-center gap-2">
+                        <div className="relative z-10 flex flex-col items-center gap-1">
                             <div className={`
                                 w-10 h-10 rounded-full flex items-center justify-center border-2 bg-white dark:bg-gray-900 transition-all
-                                ${!isReady
-                                    ? 'border-green-500 text-green-500'
-                                    : 'border-gray-300 dark:border-gray-600 text-gray-400'
+                                ${['out_for_delivery', 'delivered'].includes(order.status)
+                                    ? 'border-green-500 text-green-500' // Completed
+                                    : isReady
+                                        ? 'border-green-500 text-green-500 ring-4 ring-green-100 dark:ring-green-900/30' // Current
+                                        : 'border-gray-300 dark:border-gray-600 text-gray-400' // Pending
                                 }
                             `}>
-                                {!isReady ? <Check className="h-5 w-5" /> : <span className="font-semibold text-sm">1</span>}
+                                {['out_for_delivery', 'delivered'].includes(order.status) ? (
+                                    <Check className="h-5 w-5" />
+                                ) : (
+                                    <span className="font-semibold text-sm">1</span>
+                                )}
                             </div>
-                            <span className={`text-sm font-medium ${!isReady ? 'text-green-600 dark:text-green-400' : 'text-gray-500'}`}>
+                            <span className={`text-sm font-medium ${['out_for_delivery', 'delivered'].includes(order.status) || isReady
+                                    ? 'text-green-600 dark:text-green-400'
+                                    : 'text-gray-500'
+                                }`}>
                                 Pickup
                             </span>
+                            {order.picked_up_at && (
+                                <span className="text-[10px] text-gray-400">
+                                    {new Date(order.picked_up_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                            )}
                         </div>
 
                         {/* Step 2: Deliver */}
-                        <div className="relative z-10 flex flex-col items-center gap-2">
+                        <div className="relative z-10 flex flex-col items-center gap-1">
                             <div className={`
                                 w-10 h-10 rounded-full flex items-center justify-center border-2 bg-white dark:bg-gray-900 transition-all
-                                ${isOnTheWay
-                                    ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white'
-                                    : 'border-gray-300 dark:border-gray-600 text-gray-400'
+                                ${order.status === 'delivered'
+                                    ? 'border-green-500 text-green-500' // Completed
+                                    : isOnTheWay
+                                        ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white ring-4 ring-gray-100 dark:ring-gray-800' // Current
+                                        : 'border-gray-300 dark:border-gray-600 text-gray-400' // Pending
                                 }
                             `}>
-                                <span className="font-semibold text-sm">2</span>
+                                {order.status === 'delivered' ? (
+                                    <Check className="h-5 w-5" />
+                                ) : (
+                                    <span className="font-semibold text-sm">2</span>
+                                )}
                             </div>
-                            <span className={`text-sm font-medium ${isOnTheWay ? 'text-gray-900 dark:text-white' : 'text-gray-500'}`}>
+                            <span className={`text-sm font-medium ${order.status === 'delivered'
+                                    ? 'text-green-600 dark:text-green-400'
+                                    : isOnTheWay
+                                        ? 'text-gray-900 dark:text-white'
+                                        : 'text-gray-500'
+                                }`}>
                                 Deliver
                             </span>
+                            {order.delivered_at && (
+                                <span className="text-[10px] text-gray-400">
+                                    {new Date(order.delivered_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                            )}
                         </div>
                     </div>
                 </div>

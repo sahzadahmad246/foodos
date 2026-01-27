@@ -51,6 +51,12 @@ interface Order {
     status: string
     notes: string | null
     created_at: string
+    confirmed_at?: string | null
+    preparing_at?: string | null
+    ready_at?: string | null
+    picked_up_at?: string | null
+    delivered_at?: string | null
+    cancelled_at?: string | null
     rider_id?: string | null
     order_items: OrderItem[]
     restaurant?: Restaurant | null
@@ -272,8 +278,8 @@ export default function OrderConfirmation({ order: initialOrder }: OrderConfirma
                     </div>
 
                     <h2 className={`text-xl font-bold mb-1 ${isCancelled ? 'text-red-600 dark:text-red-400'
-                            : isComplete ? 'text-green-600 dark:text-green-400'
-                                : 'text-gray-900 dark:text-white'
+                        : isComplete ? 'text-green-600 dark:text-green-400'
+                            : 'text-gray-900 dark:text-white'
                         }`}>
                         {getStatusMessage()}
                     </h2>
@@ -356,6 +362,19 @@ export default function OrderConfirmation({ order: initialOrder }: OrderConfirma
                                 const isCurrent = index === currentStepIndex
                                 const Icon = step.icon
 
+                                // Get timestamp for this step
+                                const getStepTime = () => {
+                                    switch (step.key) {
+                                        case 'pending': return order.created_at
+                                        case 'preparing': return order.preparing_at || order.confirmed_at
+                                        case 'ready': return order.ready_at
+                                        case 'out_for_delivery': return order.picked_up_at
+                                        case 'delivered': return order.delivered_at
+                                        default: return null
+                                    }
+                                }
+                                const stepTime = isPast && index < currentStepIndex ? getStepTime() : (isCurrent ? getStepTime() : null)
+
                                 return (
                                     <div key={step.key} className="flex-1 flex flex-col items-center relative">
                                         {/* Connector line - before the circle */}
@@ -385,6 +404,12 @@ export default function OrderConfirmation({ order: initialOrder }: OrderConfirma
                                         `}>
                                             {step.label}
                                         </span>
+                                        {/* Timestamp */}
+                                        {stepTime && (
+                                            <span className="text-[10px] text-gray-400 mt-0.5">
+                                                {new Date(stepTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                                            </span>
+                                        )}
                                     </div>
                                 )
                             })}

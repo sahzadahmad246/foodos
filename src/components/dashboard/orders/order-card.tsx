@@ -41,6 +41,12 @@ interface Order {
     payment_status: string
     status: string
     created_at: string
+    confirmed_at?: string | null
+    preparing_at?: string | null
+    ready_at?: string | null
+    picked_up_at?: string | null
+    delivered_at?: string | null
+    cancelled_at?: string | null
     notes?: string | null
     rider_id?: string | null
     restaurant_id: string
@@ -211,6 +217,85 @@ export function OrderCard({ order }: OrderCardProps) {
                     {order.notes && (
                         <div className="text-sm text-muted-foreground bg-muted/50 rounded p-2">
                             <span className="font-medium">Note: </span>{order.notes}
+                        </div>
+                    )}
+
+
+
+                    {/* Progress Stepper */}
+                    {order.status !== 'cancelled' && (
+                        <div className="py-4 px-2">
+                            <div className="relative flex items-center justify-between w-full">
+                                {/* Connecting Line */}
+                                <div className="absolute left-2 right-2 top-1.5 h-0.5 bg-gray-100 dark:bg-gray-800 -z-0" />
+                                {/* Active Line */}
+                                <div
+                                    className="absolute left-2 top-1.5 h-0.5 bg-primary -z-0 transition-all duration-500"
+                                    style={{
+                                        right: `${100 - (['pending', 'preparing', 'ready', 'out_for_delivery', 'delivered'].indexOf(order.status) / 4) * 100}%`
+                                    }}
+                                />
+
+                                {['pending', 'preparing', 'ready', 'out_for_delivery', 'delivered'].map((step, index) => {
+                                    const steps = ['pending', 'preparing', 'ready', 'out_for_delivery', 'delivered']
+                                    const currentStepIndex = steps.indexOf(order.status)
+                                    const stepIndex = steps.indexOf(step)
+                                    const isCompleted = stepIndex <= currentStepIndex
+                                    const isCurrent = stepIndex === currentStepIndex
+
+                                    let stepLabel = ''
+                                    let stepTime = null
+
+                                    switch (step) {
+                                        case 'pending':
+                                            stepLabel = 'Placed'
+                                            stepTime = order.created_at
+                                            break
+                                        case 'preparing':
+                                            stepLabel = 'Prep'
+                                            stepTime = order.preparing_at || order.confirmed_at
+                                            break
+                                        case 'ready':
+                                            stepLabel = 'Ready'
+                                            stepTime = order.ready_at
+                                            break
+                                        case 'out_for_delivery':
+                                            stepLabel = 'Out'
+                                            stepTime = order.picked_up_at
+                                            break
+                                        case 'delivered':
+                                            stepLabel = 'Done'
+                                            stepTime = order.delivered_at
+                                            break
+                                    }
+
+                                    // Only show time if step is completed or current
+                                    if (!isCompleted) stepTime = null
+
+                                    return (
+                                        <div key={step} className="flex flex-col items-center gap-2 z-10">
+                                            <div className={`
+                                                w-3.5 h-3.5 rounded-full border-[3px] transition-colors duration-300
+                                                ${isCompleted
+                                                    ? 'bg-primary border-primary'
+                                                    : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700'
+                                                }
+                                                ${isCurrent ? 'ring-2 ring-primary/20 ring-offset-2 dark:ring-offset-gray-900 scale-110' : ''}
+                                            `} />
+                                            <div className="flex flex-col items-center">
+                                                <span className={`text-[10px] font-semibold tracking-tight ${isCurrent ? 'text-primary' : 'text-gray-500'}`}>
+                                                    {stepLabel}
+                                                </span>
+                                                {stepTime && (
+                                                    <span className="text-[9px] text-gray-400 font-medium mt-0.5">
+                                                        {new Date(stepTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+                            </div>
                         </div>
                     )}
 

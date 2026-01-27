@@ -28,6 +28,12 @@ interface Order {
     payment_status: string
     status: string
     created_at: string
+    confirmed_at?: string | null
+    preparing_at?: string | null
+    ready_at?: string | null
+    picked_up_at?: string | null
+    delivered_at?: string | null
+    cancelled_at?: string | null
     notes?: string | null
     rider_id?: string | null
     restaurant_id: string
