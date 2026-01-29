@@ -128,3 +128,43 @@ export async function markOrderDelivered(orderId: string) {
     revalidatePath('/dashboard/orders')
     return { success: true }
 }
+
+export async function verifyPickupOtp(orderId: string, otp: string) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'Not authenticated' }
+
+    // Fetch the order to check the OTP
+    const { data: order, error: fetchError } = await supabase
+        .from('orders')
+        .select('pickup_otp, status')
+        .eq('id', orderId)
+        .single()
+
+    if (fetchError || !order) {
+        return { error: 'Order not found' }
+    }
+
+    if (order.status !== 'ready') {
+        return { error: 'Order is not ready for pickup' }
+    }
+
+    if (order.pickup_otp !== otp) {
+        return { error: 'Invalid OTP' }
+    }
+
+    const now = new Date().toISOString()
+    const { error: updateError } = await supabase
+        .from('orders')
+        .update({
+            status: 'delivered', // Mark as completed/delivered
+            delivered_at: now,   // Reuse delivered_at for pickup completion time
+            updated_at: now
+        })
+        .eq('id', orderId)
+
+    if (updateError) return { error: updateError.message }
+
+    revalidatePath('/dashboard/orders')
+    return { success: true }
+}

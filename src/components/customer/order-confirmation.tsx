@@ -428,6 +428,26 @@ export default function OrderConfirmation({ order: initialOrder }: OrderConfirma
                             <p className="font-semibold text-gray-900 dark:text-white">{restaurant.name}</p>
                             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{restaurantAddress}</p>
                         </div>
+
+                        {/* Merged OTP Section */}
+                        {(order as any).pickup_otp && !isComplete && !isCancelled && (
+                            <div className="border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 p-6 text-center">
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-primary/70 mb-3">
+                                    Pickup OTP
+                                </p>
+                                <div className="text-4xl font-mono font-bold tracking-[0.3em] text-primary">
+                                    {(order as any).pickup_otp}
+                                </div>
+                                <div className="mt-4 flex justify-center">
+                                    <div className="flex items-center gap-2 text-[10px] text-amber-600 bg-amber-50 dark:bg-amber-950/30 px-3 py-1.5 rounded-full border border-amber-100 dark:border-amber-900/50">
+                                        <div className="min-w-3">⚠️</div>
+                                        <p className="leading-tight">
+                                            Only share at counter
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 ) : order.customer_address && (
                     <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
@@ -552,6 +572,6 @@ export default function OrderConfirmation({ order: initialOrder }: OrderConfirma
                     <Link href="/">Back to Home</Link>
                 </Button>
             </div>
-        </div>
+        </div >
     )
 }

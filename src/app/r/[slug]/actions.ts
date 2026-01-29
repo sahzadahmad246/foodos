@@ -68,6 +68,7 @@ export async function createOrder(data: CreateOrderData) {
                 notes: data.notes,
                 status: 'pending',
                 payment_status: 'pending',
+                pickup_otp: (!data.customerAddress) ? Math.floor(100000 + Math.random() * 900000).toString() : null,
             })
             .select()
             .single()
