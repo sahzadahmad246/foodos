@@ -6,7 +6,7 @@ import Link from 'next/link'
 import {
     ArrowLeft, MapPin, Phone, Package, Store,
     Navigation, CheckCircle2, Loader2, AlertCircle, MapPinOff,
-    Banknote, CreditCard, Check
+    Banknote, CreditCard, Check, XCircle, RotateCcw
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -53,6 +53,8 @@ interface Order {
         address_line1: string | null
         city: string | null
     }
+    cancellation_reason?: string | null
+    return_otp?: string | null
 }
 
 interface RiderOrderDetailProps {
@@ -71,6 +73,7 @@ export function RiderOrderDetail({ order, riderId }: RiderOrderDetailProps) {
 
     const isReady = order.status === 'ready'
     const isOnTheWay = order.status === 'out_for_delivery'
+    const isCancelled = order.status === 'cancelled'
     const isCOD = order.payment_method === 'cod'
 
     const getRiderLocation = () => {
@@ -207,8 +210,8 @@ export function RiderOrderDetail({ order, riderId }: RiderOrderDetailProps) {
                                 )}
                             </div>
                             <span className={`text-sm font-medium ${['out_for_delivery', 'delivered'].includes(order.status) || isReady
-                                    ? 'text-green-600 dark:text-green-400'
-                                    : 'text-gray-500'
+                                ? 'text-green-600 dark:text-green-400'
+                                : 'text-gray-500'
                                 }`}>
                                 Pickup
                             </span>
@@ -237,10 +240,10 @@ export function RiderOrderDetail({ order, riderId }: RiderOrderDetailProps) {
                                 )}
                             </div>
                             <span className={`text-sm font-medium ${order.status === 'delivered'
-                                    ? 'text-green-600 dark:text-green-400'
-                                    : isOnTheWay
-                                        ? 'text-gray-900 dark:text-white'
-                                        : 'text-gray-500'
+                                ? 'text-green-600 dark:text-green-400'
+                                : isOnTheWay
+                                    ? 'text-gray-900 dark:text-white'
+                                    : 'text-gray-500'
                                 }`}>
                                 Deliver
                             </span>
@@ -253,6 +256,44 @@ export function RiderOrderDetail({ order, riderId }: RiderOrderDetailProps) {
                     </div>
                 </div>
 
+                {/* Cancelled Order Alert */}
+                {isCancelled && (
+                    <div className="bg-red-50 dark:bg-red-950/30 rounded-2xl p-5 border border-red-200 dark:border-red-800">
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center">
+                                <XCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-red-700 dark:text-red-300">Order Cancelled</h3>
+                                {order.cancellation_reason && (
+                                    <p className="text-sm text-red-600 dark:text-red-400">{order.cancellation_reason}</p>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Return Instructions */}
+                        <div className="mt-4 p-4 bg-white dark:bg-gray-900 rounded-xl border border-red-200 dark:border-red-800">
+                            <div className="flex items-center gap-2 mb-2">
+                                <RotateCcw className="h-4 w-4 text-amber-600" />
+                                <span className="font-semibold text-amber-700 dark:text-amber-400">Return Required</span>
+                            </div>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                                Please return the order to the restaurant and share this OTP with them:
+                            </p>
+
+                            {order.return_otp && (
+                                <div className="text-center py-4 bg-amber-50 dark:bg-amber-950/30 rounded-lg">
+                                    <p className="text-xs text-amber-600 mb-1">Return OTP</p>
+                                    <p className="text-4xl font-mono font-bold text-amber-700 tracking-widest">{order.return_otp}</p>
+                                </div>
+                            )}
+
+                            <p className="text-xs text-gray-500 mt-3 text-center">
+                                Navigate back to {order.restaurant?.name || 'the restaurant'} to complete the return.
+                            </p>
+                        </div>
+                    </div>
+                )}
                 {/* Restaurant Pickup Card */}
                 {isReady && (
                     <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">

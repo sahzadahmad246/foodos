@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { MapPin, Phone, User, Clock, Package, ChefHat, Bike, Check, X, Loader2, UserPlus, Store, Banknote, CheckCircle2 } from 'lucide-react'
+import { MapPin, Phone, User, Clock, Package, ChefHat, Bike, Check, X, Loader2, UserPlus, Store, Banknote, CheckCircle2, XCircle, RotateCcw } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
@@ -15,7 +15,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { acceptOrder, rejectOrder, markOrderReady } from '../actions/order-actions'
+import { acceptOrder, rejectOrder, markOrderReady, cancelOrder, verifyReturnOtp, markReturnCollected } from '../actions/order-actions'
 import { AssignRiderModal } from './assign-rider-dropdown'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
@@ -55,6 +55,11 @@ interface Order {
         id: string
         name: string
     } | null
+    cancellation_reason?: string | null
+    cancelled_by?: string | null
+    cancelled_step?: string | null
+    return_otp?: string | null
+    return_verified_at?: string | null
 }
 
 interface OrderCardProps {
@@ -70,7 +75,19 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: str
     cancelled: { label: 'Cancelled', color: 'text-red-700', bgColor: 'bg-red-100 border-red-300' },
 }
 
-type LoadingAction = 'accept' | 'reject' | 'ready' | 'assign' | null
+const CANCELLATION_REASONS = [
+    'Customer requested cancellation',
+    'Out of stock / Item unavailable',
+    'Restaurant too busy',
+    'Delivery address unreachable',
+    'Payment issue',
+    'Customer unreachable',
+    'Rider unavailable',
+    'Order taking too long',
+    'Other'
+] as const
+
+type LoadingAction = 'accept' | 'reject' | 'ready' | 'assign' | 'cancel' | 'returnVerify' | 'returnCollect' | null
 
 export function OrderCard({ order }: OrderCardProps) {
     const router = useRouter()
@@ -80,6 +97,14 @@ export function OrderCard({ order }: OrderCardProps) {
     const [otp, setOtp] = useState('')
     const [verifyError, setVerifyError] = useState('')
     const [isCashCollected, setIsCashCollected] = useState(false)
+    // Cancel order state
+    const [showCancelDialog, setShowCancelDialog] = useState(false)
+    const [cancelReason, setCancelReason] = useState('')
+    const [customReason, setCustomReason] = useState('')
+    // Return OTP verification state
+    const [showReturnDialog, setShowReturnDialog] = useState(false)
+    const [returnOtp, setReturnOtp] = useState('')
+    const [returnError, setReturnError] = useState('')
 
     const statusConfig = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending
     const isLoading = loadingAction !== null
@@ -160,6 +185,75 @@ export function OrderCard({ order }: OrderCardProps) {
         }
     }
 
+    const handleCancelOrder = async () => {
+        const reason = cancelReason === 'Other' ? customReason : cancelReason
+        if (!reason.trim()) {
+            toast.error('Please select or enter a cancellation reason')
+            return
+        }
+
+        setLoadingAction('cancel')
+        const result = await cancelOrder(order.id, reason)
+        setLoadingAction(null)
+
+        if (result.error) {
+            toast.error(result.error)
+        } else {
+            toast.success('Order cancelled')
+            setShowCancelDialog(false)
+            setCancelReason('')
+            setCustomReason('')
+            router.refresh()
+        }
+    }
+
+    const openCancelDialog = () => {
+        setCancelReason('')
+        setCustomReason('')
+        setShowCancelDialog(true)
+    }
+
+    const handleVerifyReturn = async () => {
+        if (returnOtp.length !== 6) {
+            setReturnError('Please enter a valid 6-digit OTP')
+            return
+        }
+
+        setReturnError('')
+        setLoadingAction('returnVerify')
+        const result = await verifyReturnOtp(order.id, returnOtp)
+        setLoadingAction(null)
+
+        if (result.error) {
+            setReturnError(result.error)
+            toast.error(result.error)
+        } else {
+            toast.success('Return verified! Rider is now available.')
+            setShowReturnDialog(false)
+            setReturnOtp('')
+            router.refresh()
+        }
+    }
+
+    const handleMarkReturnCollected = async () => {
+        setLoadingAction('returnCollect')
+        const result = await markReturnCollected(order.id)
+        setLoadingAction(null)
+
+        if (result.error) {
+            toast.error(result.error)
+        } else {
+            toast.success('Return marked as collected. Rider is now available.')
+            setShowReturnDialog(false)
+            router.refresh()
+        }
+    }
+
+    const openReturnDialog = () => {
+        setReturnOtp('')
+        setReturnError('')
+        setShowReturnDialog(true)
+    }
     const formatTime = (dateString: string) => {
         const date = new Date(dateString)
         const now = new Date()
@@ -174,7 +268,7 @@ export function OrderCard({ order }: OrderCardProps) {
 
     return (
         <>
-            <Card className={`overflow-hidden border-2 ${statusConfig.bgColor}`}>
+            <Card data-testid="order-card" className={`overflow-hidden border-2 ${statusConfig.bgColor}`}>
                 <CardHeader className="pb-2 pt-3 px-4">
                     <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
@@ -264,83 +358,116 @@ export function OrderCard({ order }: OrderCardProps) {
                     )}
 
 
-
                     {/* Progress Stepper */}
-                    {order.status !== 'cancelled' && (
-                        <div className="py-4 px-2">
-                            <div className="relative flex items-center justify-between w-full">
-                                {/* Connecting Line */}
-                                <div className="absolute left-2 right-2 top-1.5 h-0.5 bg-gray-100 dark:bg-gray-800 -z-0" />
-                                {/* Active Line */}
-                                <div
-                                    className="absolute left-2 top-1.5 h-0.5 bg-primary -z-0 transition-all duration-500"
-                                    style={{
-                                        right: `${100 - (['pending', 'preparing', 'ready', 'out_for_delivery', 'delivered'].indexOf(order.status) / 4) * 100}%`
-                                    }}
-                                />
+                    {(() => {
+                        const isCancelled = order.status === 'cancelled'
+                        const steps = ['pending', 'preparing', 'ready', 'out_for_delivery', 'delivered']
 
-                                {['pending', 'preparing', 'ready', 'out_for_delivery', 'delivered'].map((step, index) => {
-                                    const steps = ['pending', 'preparing', 'ready', 'out_for_delivery', 'delivered']
-                                    const currentStepIndex = steps.indexOf(order.status)
-                                    const stepIndex = steps.indexOf(step)
-                                    const isCompleted = stepIndex <= currentStepIndex
-                                    const isCurrent = stepIndex === currentStepIndex
+                        // For cancelled orders, determine what step it was cancelled at
+                        const cancelledAtStep = isCancelled ? (order.cancelled_step || 'pending') : null
+                        const cancelledAtIndex = cancelledAtStep ? steps.indexOf(cancelledAtStep) : -1
 
-                                    let stepLabel = ''
-                                    let stepTime = null
+                        // Current step index - for non-cancelled orders
+                        const currentStepIndex = isCancelled ? cancelledAtIndex : steps.indexOf(order.status)
 
-                                    switch (step) {
-                                        case 'pending':
-                                            stepLabel = 'Placed'
-                                            stepTime = order.created_at
-                                            break
-                                        case 'preparing':
-                                            stepLabel = 'Prep'
-                                            stepTime = order.preparing_at || order.confirmed_at
-                                            break
-                                        case 'ready':
-                                            stepLabel = 'Ready'
-                                            stepTime = order.ready_at
-                                            break
-                                        case 'out_for_delivery':
-                                            stepLabel = 'Out'
-                                            stepTime = order.picked_up_at
-                                            break
-                                        case 'delivered':
-                                            stepLabel = 'Done'
-                                            stepTime = order.delivered_at
-                                            break
-                                    }
+                        const stepConfig = [
+                            { key: 'pending', label: 'Placed', time: order.created_at },
+                            { key: 'preparing', label: 'Prep', time: order.preparing_at || order.confirmed_at },
+                            { key: 'ready', label: 'Ready', time: order.ready_at },
+                            { key: 'out_for_delivery', label: 'Pickup', time: order.picked_up_at },
+                            { key: 'delivered', label: 'Done', time: order.delivered_at },
+                        ]
 
-                                    // Only show time if step is completed or current
-                                    if (!isCompleted) stepTime = null
+                        // For cancelled orders, filter steps to show only up to cancelled point + cancelled step
+                        const displaySteps = isCancelled
+                            ? [...stepConfig.slice(0, cancelledAtIndex + 1), { key: 'cancelled', label: 'Cancelled', time: order.cancelled_at }]
+                            : stepConfig
 
-                                    return (
-                                        <div key={step} className="flex flex-col items-center gap-2 z-10">
-                                            <div className={`
-                                                w-3.5 h-3.5 rounded-full border-[3px] transition-colors duration-300
-                                                ${isCompleted
-                                                    ? 'bg-primary border-primary'
-                                                    : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700'
-                                                }
-                                                ${isCurrent ? 'ring-2 ring-primary/20 ring-offset-2 dark:ring-offset-gray-900 scale-110' : ''}
-                                            `} />
-                                            <div className="flex flex-col items-center">
-                                                <span className={`text-[10px] font-semibold tracking-tight ${isCurrent ? 'text-primary' : 'text-gray-500'}`}>
-                                                    {stepLabel}
-                                                </span>
-                                                {stepTime && (
-                                                    <span className="text-[9px] text-gray-400 font-medium mt-0.5">
-                                                        {new Date(stepTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                        return (
+                            <div className="py-3 bg-gradient-to-r from-gray-50/50 via-white to-gray-50/50 dark:from-gray-900/50 dark:via-gray-800/30 dark:to-gray-900/50 rounded-lg">
+                                {/* Stepper Container */}
+                                <div className="relative px-4">
+                                    {/* Track Line - Background */}
+                                    <div className="absolute top-[11px] left-[10%] right-[10%] h-[2px] bg-gray-200 dark:bg-gray-700" />
+
+                                    {/* Track Line - Progress */}
+                                    <div
+                                        className={`absolute top-[11px] left-[10%] h-[2px] transition-all duration-500 ease-out ${isCancelled
+                                            ? 'bg-gradient-to-r from-primary via-primary to-red-500'
+                                            : 'bg-gradient-to-r from-primary to-primary/80'
+                                            }`}
+                                        style={{
+                                            width: `${(Math.min(displaySteps.length - 1, currentStepIndex + (isCancelled ? 1 : 0)) / (displaySteps.length - 1)) * 80}%`
+                                        }}
+                                    />
+
+                                    {/* Steps Grid */}
+                                    <div className={`grid relative`} style={{ gridTemplateColumns: `repeat(${displaySteps.length}, 1fr)` }}>
+                                        {displaySteps.map((step, index) => {
+                                            const isCancelledStep = step.key === 'cancelled'
+                                            const isCompleted = isCancelledStep || index <= currentStepIndex
+                                            const isCurrent = isCancelledStep || index === currentStepIndex
+                                            const showTime = isCompleted && step.time
+
+                                            return (
+                                                <div key={step.key} className="flex flex-col items-center">
+                                                    {/* Circle */}
+                                                    <div className={`
+                                                        relative z-10 flex items-center justify-center
+                                                        w-6 h-6 rounded-full transition-all duration-300
+                                                        ${isCancelledStep
+                                                            ? 'bg-red-500 shadow-sm shadow-red-500/30'
+                                                            : isCompleted
+                                                                ? 'bg-primary shadow-sm shadow-primary/30'
+                                                                : 'bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600'
+                                                        }
+                                                        ${isCurrent && !isCancelledStep ? 'ring-4 ring-primary/20 scale-110' : ''}
+                                                        ${isCancelledStep ? 'ring-4 ring-red-500/20 scale-110' : ''}
+                                                    `}>
+                                                        {isCancelledStep ? (
+                                                            <X className="w-3 h-3 text-white" />
+                                                        ) : isCompleted ? (
+                                                            <Check className="w-3 h-3 text-white" />
+                                                        ) : null}
+                                                    </div>
+
+                                                    {/* Label */}
+                                                    <span className={`
+                                                        mt-2 text-[10px] font-semibold uppercase tracking-wider text-center
+                                                        ${isCancelledStep
+                                                            ? 'text-red-500'
+                                                            : isCurrent
+                                                                ? 'text-primary'
+                                                                : isCompleted
+                                                                    ? 'text-gray-600 dark:text-gray-400'
+                                                                    : 'text-gray-400 dark:text-gray-500'
+                                                        }
+                                                    `}>
+                                                        {step.label}
                                                     </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    )
-                                })}
+
+                                                    {/* Time - Fixed height container */}
+                                                    <div className="h-4 flex items-center">
+                                                        {showTime ? (
+                                                            <span className={`text-[9px] font-medium ${isCancelledStep ? 'text-red-400' : 'text-gray-400 dark:text-gray-500'}`}>
+                                                                {new Date(step.time as string).toLocaleTimeString('en-IN', {
+                                                                    hour: '2-digit',
+                                                                    minute: '2-digit',
+                                                                    hour12: true
+                                                                })}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-[9px] text-transparent">--:--</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    )}
+                        )
+                    })()}
 
                     {/* Action Buttons */}
                     <div className="flex gap-2 pt-2">
@@ -430,12 +557,70 @@ export function OrderCard({ order }: OrderCardProps) {
                         )}
 
                         {order.status === 'cancelled' && (
-                            <div className="flex-1 flex items-center justify-center gap-2 py-2 bg-red-50 rounded-lg text-red-700">
-                                <X className="h-4 w-4" />
-                                <span className="text-sm font-medium">Order cancelled</span>
+                            <div className="flex-1 flex flex-col gap-2">
+                                <div className="flex items-center justify-center gap-2 py-2 bg-red-50 rounded-lg text-red-700">
+                                    <X className="h-4 w-4" />
+                                    <span className="text-sm font-medium">Order cancelled</span>
+                                </div>
+                                {order.cancellation_reason && (
+                                    <p className="text-xs text-center text-muted-foreground">
+                                        Reason: {order.cancellation_reason}
+                                    </p>
+                                )}
+                                {/* If cancelled while out for delivery and return not verified, show return section */}
+                                {order.cancelled_step === 'out_for_delivery' && order.rider_id && !order.return_verified_at && (
+                                    <div className="mt-2 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <RotateCcw className="h-4 w-4 text-amber-600" />
+                                            <span className="font-semibold text-amber-700 dark:text-amber-400 text-sm">Awaiting Order Return</span>
+                                        </div>
+                                        <p className="text-xs text-amber-600 mb-3">Rider must return the order. Verify with OTP or mark as collected.</p>
+                                        <div className="flex gap-2">
+                                            <Button
+                                                onClick={openReturnDialog}
+                                                size="sm"
+                                                className="flex-1 bg-amber-600 hover:bg-amber-700 text-white"
+                                            >
+                                                Verify Return
+                                            </Button>
+                                            <Button
+                                                onClick={handleMarkReturnCollected}
+                                                size="sm"
+                                                variant="outline"
+                                                disabled={loadingAction === 'returnCollect'}
+                                                className="flex-1"
+                                            >
+                                                {loadingAction === 'returnCollect' && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
+                                                Mark Collected
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
+                                {order.return_verified_at && (
+                                    <div className="text-xs text-green-600 flex items-center justify-center gap-1">
+                                        <CheckCircle2 className="h-3 w-3" />
+                                        Return verified
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
+
+                    {/* Cancel Order Button - for non-delivered, non-cancelled orders */}
+                    {!['delivered', 'cancelled'].includes(order.status) && (
+                        <div className="pt-2">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={openCancelDialog}
+                                disabled={isLoading}
+                                className="w-full text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                                <XCircle className="h-4 w-4 mr-2" />
+                                Cancel Order
+                            </Button>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
 
@@ -573,6 +758,138 @@ export function OrderCard({ order }: OrderCardProps) {
                         >
                             {(loadingAction === 'verify' as any) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Verify & Complete
+                        </Button>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Cancel Order Dialog */}
+            <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+                <AlertDialogContent className="max-w-sm">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Cancel Order {order.order_number}?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Select a reason for cancellation. This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+
+                    <div className="py-4 space-y-3">
+                        {CANCELLATION_REASONS.map((reason) => (
+                            <label
+                                key={reason}
+                                className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${cancelReason === reason
+                                    ? 'border-red-500 bg-red-50 dark:bg-red-950/30'
+                                    : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50'
+                                    }`}
+                            >
+                                <input
+                                    type="radio"
+                                    name="cancel-reason"
+                                    value={reason}
+                                    checked={cancelReason === reason}
+                                    onChange={(e) => setCancelReason(e.target.value)}
+                                    className="h-4 w-4 text-red-500 focus:ring-red-500"
+                                />
+                                <span className="text-sm font-medium">{reason}</span>
+                            </label>
+                        ))}
+
+                        {cancelReason === 'Other' && (
+                            <input
+                                type="text"
+                                placeholder="Specify reason..."
+                                value={customReason}
+                                onChange={(e) => setCustomReason(e.target.value)}
+                                className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                            />
+                        )}
+                    </div>
+
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={loadingAction === 'cancel'}>Back</AlertDialogCancel>
+                        <Button
+                            onClick={handleCancelOrder}
+                            disabled={loadingAction === 'cancel' || !cancelReason || (cancelReason === 'Other' && !customReason.trim())}
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                        >
+                            {loadingAction === 'cancel' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Cancel Order
+                        </Button>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Return OTP Verification Dialog */}
+            <AlertDialog open={showReturnDialog} onOpenChange={setShowReturnDialog}>
+                <AlertDialogContent className="max-w-sm">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Verify Order Return</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Enter the 6-digit OTP from the rider to confirm order return.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+
+                    <div className="py-4 space-y-4">
+                        {order.return_otp && (
+                            <div className="text-center p-4 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800">
+                                <p className="text-xs text-amber-600 mb-1">Return OTP (Share with rider)</p>
+                                <p className="text-3xl font-mono font-bold text-amber-700 tracking-widest">{order.return_otp}</p>
+                            </div>
+                        )}
+
+                        <div className="space-y-2">
+                            <p className="text-sm font-medium text-center text-muted-foreground">Enter OTP from Rider</p>
+                            <div className="flex justify-center gap-2">
+                                {Array.from({ length: 6 }).map((_, index) => (
+                                    <input
+                                        key={index}
+                                        id={`return-otp-input-${index}`}
+                                        type="text"
+                                        inputMode="numeric"
+                                        maxLength={1}
+                                        value={returnOtp[index] || ''}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            if (!/^\d*$/.test(val)) return;
+
+                                            const newOtp = returnOtp.split('');
+                                            newOtp[index] = val;
+                                            const newOtpStr = newOtp.join('').slice(0, 6);
+                                            setReturnOtp(newOtpStr);
+                                            setReturnError('');
+
+                                            if (val && index < 5) {
+                                                document.getElementById(`return-otp-input-${index + 1}`)?.focus();
+                                            }
+                                        }}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Backspace' && !returnOtp[index] && index > 0) {
+                                                document.getElementById(`return-otp-input-${index - 1}`)?.focus();
+                                            }
+                                        }}
+                                        className="h-12 w-10 text-center text-xl font-bold rounded-lg border border-input bg-background/50 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 transition-all shadow-sm"
+                                        autoComplete="off"
+                                    />
+                                ))}
+                            </div>
+
+                            {returnError && (
+                                <p className="text-sm text-red-500 font-medium text-center bg-red-50 dark:bg-red-950/20 py-2 rounded-md">
+                                    {returnError}
+                                </p>
+                            )}
+                        </div>
+                    </div>
+
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={loadingAction === 'returnVerify'}>Cancel</AlertDialogCancel>
+                        <Button
+                            onClick={handleVerifyReturn}
+                            disabled={loadingAction === 'returnVerify' || returnOtp.length !== 6}
+                            className="bg-amber-600 hover:bg-amber-700 text-white"
+                        >
+                            {loadingAction === 'returnVerify' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Verify Return
                         </Button>
                     </AlertDialogFooter>
                 </AlertDialogContent>

@@ -42,6 +42,19 @@ export function RealtimeRiderOrders({ riderId, children }: RealtimeRiderOrdersPr
                         if (payload.eventType === 'UPDATE' && oldOrder?.status === 'preparing' && newOrder.status === 'ready') {
                             toast.success('✅ Order is ready for pickup!')
                         }
+
+                        // Order was cancelled
+                        if (payload.eventType === 'UPDATE' && newOrder.status === 'cancelled' && oldOrder?.status !== 'cancelled') {
+                            // If we already picked it up (out_for_delivery), show return alert
+                            if (oldOrder?.status === 'out_for_delivery') {
+                                toast.error('⚠️ Order cancelled! Please return to restaurant.', {
+                                    duration: 10000,
+                                    description: 'Check the order details for return OTP.'
+                                })
+                            } else {
+                                toast.warning('Order has been cancelled')
+                            }
+                        }
                     }
 
                     // Refresh the page to get updated data

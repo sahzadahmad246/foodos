@@ -58,6 +58,7 @@ interface Order {
     delivered_at?: string | null
     cancelled_at?: string | null
     rider_id?: string | null
+    cancellation_reason?: string | null
     order_items: OrderItem[]
     restaurant?: Restaurant | null
     rider?: Rider | null
@@ -207,7 +208,7 @@ export default function OrderConfirmation({ order: initialOrder }: OrderConfirma
             case 'ready': return isPickup ? 'Head to the restaurant to pick up' : 'Your order is ready for delivery'
             case 'out_for_delivery': return order.rider ? `${order.rider.name} is bringing your order` : 'Delivery partner is on the way'
             case 'delivered': return 'Thank you for your order!'
-            case 'cancelled': return 'This order has been cancelled'
+            case 'cancelled': return order.cancellation_reason ? `Reason: ${order.cancellation_reason}` : 'This order has been cancelled'
             default: return ''
         }
     }
