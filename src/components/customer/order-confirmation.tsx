@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import {
     CheckCircle2, MapPin, Phone, Package,
     ChefHat, Truck, PartyPopper, Store, XCircle, ArrowLeft,
-    Banknote, CreditCard, Bike, User, Clock, Loader2, Check
+    Banknote, CreditCard, Bike, User, Clock, Loader2, Check, X
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
@@ -354,13 +354,33 @@ export default function OrderConfirmation({ order: initialOrder }: OrderConfirma
                     </div>
                 )}
 
-                {/* Progress Stepper - No box wrapper */}
-                {!isCancelled && (
-                    <div className="py-4">
-                        <div className="flex items-start">
-                            {STATUS_STEPS.map((step, index) => {
-                                const isPast = index <= currentStepIndex
-                                const isCurrent = index === currentStepIndex
+                {/* Progress Stepper - Show for both active and cancelled orders */}
+                <div className="py-4">
+                    <div className="flex items-start">
+                        {(() => {
+                            // For cancelled orders, determine how far the order got before cancellation
+                            const getCancelledStepIndex = () => {
+                                if (order.picked_up_at) return STATUS_STEPS.findIndex(s => s.key === 'out_for_delivery')
+                                if (order.ready_at) return STATUS_STEPS.findIndex(s => s.key === 'ready')
+                                if (order.preparing_at || order.confirmed_at) return STATUS_STEPS.findIndex(s => s.key === 'preparing')
+                                return 0 // pending
+                            }
+
+                            const cancelledAtIndex = isCancelled ? getCancelledStepIndex() : -1
+
+                            // Filter steps for cancelled - show only steps up to where cancelled, plus Cancelled step
+                            const displaySteps = isCancelled
+                                ? [...STATUS_STEPS.slice(0, cancelledAtIndex + 1), { key: 'cancelled', label: 'Cancelled', icon: X }]
+                                : STATUS_STEPS
+
+                            return displaySteps.map((step, index) => {
+                                const isPast = isCancelled
+                                    ? index < displaySteps.length - 1 // All before "Cancelled" are completed
+                                    : index <= currentStepIndex
+                                const isCurrent = isCancelled
+                                    ? index === displaySteps.length - 1 // "Cancelled" is current
+                                    : index === currentStepIndex
+                                const isCancelledStep = step.key === 'cancelled'
                                 const Icon = step.icon
 
                                 // Get timestamp for this step
@@ -371,29 +391,38 @@ export default function OrderConfirmation({ order: initialOrder }: OrderConfirma
                                         case 'ready': return order.ready_at
                                         case 'out_for_delivery': return order.picked_up_at
                                         case 'delivered': return order.delivered_at
+                                        case 'cancelled': return order.cancelled_at
                                         default: return null
                                     }
                                 }
-                                const stepTime = isPast && index < currentStepIndex ? getStepTime() : (isCurrent ? getStepTime() : null)
+                                const stepTime = isPast || isCurrent ? getStepTime() : null
 
                                 return (
                                     <div key={step.key} className="flex-1 flex flex-col items-center relative">
                                         {/* Connector line - before the circle */}
                                         {index > 0 && (
                                             <div
-                                                className={`absolute top-4 right-1/2 h-0.5 w-full ${isPast ? 'bg-gray-900 dark:bg-white' : 'bg-gray-200 dark:bg-gray-700'
+                                                className={`absolute top-4 right-1/2 h-0.5 w-full ${isCancelledStep
+                                                    ? 'bg-red-500'
+                                                    : isPast
+                                                        ? 'bg-gray-900 dark:bg-white'
+                                                        : 'bg-gray-200 dark:bg-gray-700'
                                                     }`}
                                             />
                                         )}
 
                                         <div className={`
-                                            relative z-10 w-8 h-8 rounded-full flex items-center justify-center border-2 bg-white dark:bg-gray-950
-                                            ${isPast
-                                                ? 'border-gray-900 dark:border-white'
-                                                : 'border-gray-300 dark:border-gray-600'
+                                            relative z-10 w-8 h-8 rounded-full flex items-center justify-center border-2
+                                            ${isCancelledStep
+                                                ? 'border-red-500 bg-red-500 dark:bg-red-500'
+                                                : isPast
+                                                    ? 'border-gray-900 bg-white dark:bg-gray-950 dark:border-white'
+                                                    : 'border-gray-300 bg-white dark:bg-gray-950 dark:border-gray-600'
                                             }
                                         `}>
-                                            {isPast && index < currentStepIndex ? (
+                                            {isCancelledStep ? (
+                                                <Icon className="h-4 w-4 text-white" />
+                                            ) : isPast && !isCurrent ? (
                                                 <Check className="h-4 w-4 text-gray-900 dark:text-white" />
                                             ) : (
                                                 <Icon className={`h-4 w-4 ${isPast ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`} />
@@ -401,7 +430,11 @@ export default function OrderConfirmation({ order: initialOrder }: OrderConfirma
                                         </div>
                                         <span className={`
                                             text-xs text-center mt-2 leading-tight
-                                            ${isPast ? 'font-medium text-gray-900 dark:text-white' : 'text-gray-400'}
+                                            ${isCancelledStep
+                                                ? 'font-medium text-red-600 dark:text-red-400'
+                                                : isPast
+                                                    ? 'font-medium text-gray-900 dark:text-white'
+                                                    : 'text-gray-400'}
                                         `}>
                                             {step.label}
                                         </span>
@@ -413,10 +446,10 @@ export default function OrderConfirmation({ order: initialOrder }: OrderConfirma
                                         )}
                                     </div>
                                 )
-                            })}
-                        </div>
+                            })
+                        })()}
                     </div>
-                )}
+                </div>
 
                 {/* Pickup/Delivery Address */}
                 {isPickup && restaurant ? (

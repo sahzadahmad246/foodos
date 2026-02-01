@@ -169,19 +169,6 @@ export async function verifyPickupOtp(orderId: string, otp: string) {
     return { success: true }
 }
 
-// Cancellation reasons list
-export const CANCELLATION_REASONS = [
-    'Customer requested cancellation',
-    'Out of stock / Item unavailable',
-    'Restaurant too busy',
-    'Delivery address unreachable',
-    'Payment issue',
-    'Customer unreachable',
-    'Rider unavailable',
-    'Order taking too long',
-    'Other'
-] as const
-
 // Generate 6-digit OTP
 function generateOtp(): string {
     return Math.floor(100000 + Math.random() * 900000).toString()
@@ -244,12 +231,22 @@ export async function cancelOrder(
 
     if (error) return { error: error.message }
 
-    // If rider was assigned but order wasn't picked up, make rider available
+    // If rider was assigned but order wasn't picked up, check for other active orders
     if (order.rider_id && !wasOutForDelivery) {
-        await supabase
-            .from('riders')
-            .update({ status: 'available', updated_at: now })
-            .eq('id', order.rider_id)
+        // Check if rider has other active orders
+        const { count } = await supabase
+            .from('orders')
+            .select('*', { count: 'exact', head: true })
+            .eq('rider_id', order.rider_id)
+            .in('status', ['preparing', 'ready', 'out_for_delivery'])
+
+        // Only set to online if no other active orders
+        if (!count) {
+            await supabase
+                .from('riders')
+                .update({ status: 'online', updated_at: now })
+                .eq('id', order.rider_id)
+        }
     }
 
     revalidatePath('/dashboard/orders')
@@ -303,11 +300,18 @@ export async function verifyReturnOtp(orderId: string, otp: string) {
 
     if (updateError) return { error: updateError.message }
 
-    // Make rider available for new orders
-    if (order.rider_id) {
+    // Check for other active deliveries
+    const { count } = await supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('rider_id', order.rider_id)
+        .eq('status', 'out_for_delivery')
+
+    // Make rider available for new orders only if no other active deliveries
+    if (order.rider_id && !count) {
         await supabase
             .from('riders')
-            .update({ status: 'available', updated_at: now })
+            .update({ status: 'online', updated_at: now })
             .eq('id', order.rider_id)
     }
 
@@ -351,11 +355,18 @@ export async function markReturnCollected(orderId: string) {
 
     if (updateError) return { error: updateError.message }
 
-    // Make rider available for new orders
-    if (order.rider_id) {
+    // Check for other active deliveries
+    const { count } = await supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('rider_id', order.rider_id)
+        .eq('status', 'out_for_delivery')
+
+    // Make rider available for new orders only if no other active deliveries
+    if (order.rider_id && !count) {
         await supabase
             .from('riders')
-            .update({ status: 'available', updated_at: now })
+            .update({ status: 'online', updated_at: now })
             .eq('id', order.rider_id)
     }
 

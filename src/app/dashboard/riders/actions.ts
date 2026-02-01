@@ -121,9 +121,9 @@ export async function assignRiderToOrder(orderId: string, riderId: string) {
         return { error: 'Rider not found' }
     }
 
-    // Only allow assignment if rider is online
-    if (rider.status !== 'online') {
-        return { error: 'Rider is not available. Only online riders can be assigned orders.' }
+    // Allow assignment if rider is online or already on delivery (multi-order support)
+    if (rider.status !== 'online' && rider.status !== 'on_delivery') {
+        return { error: 'Rider is not available. Only online or active riders can be assigned orders.' }
     }
 
     // Update order with rider

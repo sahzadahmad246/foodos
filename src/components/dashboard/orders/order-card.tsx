@@ -567,33 +567,20 @@ export function OrderCard({ order }: OrderCardProps) {
                                         Reason: {order.cancellation_reason}
                                     </p>
                                 )}
-                                {/* If cancelled while out for delivery and return not verified, show return section */}
+                                {/* If cancelled while out for delivery and return not verified, show return OTP */}
                                 {order.cancelled_step === 'out_for_delivery' && order.rider_id && !order.return_verified_at && (
                                     <div className="mt-2 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
                                         <div className="flex items-center gap-2 mb-2">
                                             <RotateCcw className="h-4 w-4 text-amber-600" />
                                             <span className="font-semibold text-amber-700 dark:text-amber-400 text-sm">Awaiting Order Return</span>
                                         </div>
-                                        <p className="text-xs text-amber-600 mb-3">Rider must return the order. Verify with OTP or mark as collected.</p>
-                                        <div className="flex gap-2">
-                                            <Button
-                                                onClick={openReturnDialog}
-                                                size="sm"
-                                                className="flex-1 bg-amber-600 hover:bg-amber-700 text-white"
-                                            >
-                                                Verify Return
-                                            </Button>
-                                            <Button
-                                                onClick={handleMarkReturnCollected}
-                                                size="sm"
-                                                variant="outline"
-                                                disabled={loadingAction === 'returnCollect'}
-                                                className="flex-1"
-                                            >
-                                                {loadingAction === 'returnCollect' && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
-                                                Mark Collected
-                                            </Button>
-                                        </div>
+                                        <p className="text-xs text-amber-600 mb-3">Give this OTP to the rider when they return the order:</p>
+                                        {order.return_otp && (
+                                            <div className="text-center py-3 bg-white dark:bg-gray-900 rounded-lg border border-amber-200 dark:border-amber-700">
+                                                <p className="text-3xl font-mono font-bold text-amber-700 tracking-widest">{order.return_otp}</p>
+                                            </div>
+                                        )}
+                                        <p className="text-xs text-center text-muted-foreground mt-2">Rider will enter this OTP to confirm return</p>
                                     </div>
                                 )}
                                 {order.return_verified_at && (

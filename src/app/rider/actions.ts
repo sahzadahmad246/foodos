@@ -114,11 +114,21 @@ export async function deliverOrder(
         return { error: 'Failed to mark as delivered' }
     }
 
-    // Update rider status to returning
-    await supabase
-        .from('riders')
-        .update({ status: 'returning' })
-        .eq('id', riderId)
+    // Check for other active deliveries
+    const { count } = await supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('rider_id', riderId)
+        .eq('status', 'out_for_delivery')
+        .neq('id', orderId)
+
+    // Only set to returning if no other active deliveries
+    if (!count) {
+        await supabase
+            .from('riders')
+            .update({ status: 'returning' })
+            .eq('id', riderId)
+    }
 
     revalidatePath('/rider')
     revalidatePath('/dashboard/orders')
@@ -191,4 +201,59 @@ function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: numbe
 
 function toRad(deg: number): number {
     return deg * (Math.PI / 180)
+}
+
+// Rider confirms return by entering OTP given by restaurant
+export async function confirmReturnOtp(orderId: string, riderId: string, otp: string) {
+    const supabase = await createClient()
+
+    // Get order and verify OTP
+    const { data: order, error: fetchError } = await supabase
+        .from('orders')
+        .select('return_otp, rider_id')
+        .eq('id', orderId)
+        .single()
+
+    if (fetchError || !order) {
+        return { error: 'Order not found' }
+    }
+
+    if (order.rider_id !== riderId) {
+        return { error: 'Not authorized for this order' }
+    }
+
+    if (order.return_otp !== otp) {
+        return { error: 'Invalid OTP. Please check with the restaurant.' }
+    }
+
+    // OTP is correct - update order and release rider
+    const { error: updateError } = await supabase
+        .from('orders')
+        .update({
+            return_verified_at: new Date().toISOString()
+        })
+        .eq('id', orderId)
+
+    if (updateError) {
+        return { error: 'Failed to verify return' }
+    }
+
+    // Check for other active deliveries
+    const { count } = await supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('rider_id', riderId)
+        .eq('status', 'out_for_delivery')
+
+    // Only set to online if no other active deliveries
+    if (!count) {
+        await supabase
+            .from('riders')
+            .update({ status: 'online' })
+            .eq('id', riderId)
+    }
+
+    revalidatePath('/rider')
+    revalidatePath('/dashboard/orders')
+    return { success: true }
 }

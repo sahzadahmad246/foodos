@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import {
     Package, MapPin, Phone, Navigation, Banknote,
-    Bike, Clock, CheckCircle2, ChefHat, ChevronRight
+    Bike, Clock, CheckCircle2, ChefHat, ChevronRight, XCircle, RotateCcw
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
@@ -50,8 +50,8 @@ export default async function RiderDashboardPage() {
         )
     }
 
-    // Get assigned orders for this rider (including preparing orders)
-    const { data: orders } = await supabase
+    // Get assigned orders for this rider (including cancelled orders needing return)
+    const { data: activeOrders } = await supabase
         .from("orders")
         .select(`
             id,
@@ -65,11 +65,40 @@ export default async function RiderDashboardPage() {
             payment_method,
             status,
             created_at,
+            cancellation_reason,
+            return_verified_at,
             restaurant: restaurants(name, phone)
             `)
         .eq("rider_id", rider.id)
         .in("status", ["preparing", "ready", "out_for_delivery"])
         .order("created_at", { ascending: false })
+
+    // Also get cancelled orders that need to be returned (return not verified)
+    const { data: cancelledOrders } = await supabase
+        .from("orders")
+        .select(`
+            id,
+            order_number,
+            customer_name,
+            customer_phone,
+            customer_address,
+            customer_latitude,
+            customer_longitude,
+            total_amount,
+            payment_method,
+            status,
+            created_at,
+            cancellation_reason,
+            return_verified_at,
+            restaurant: restaurants(name, phone)
+            `)
+        .eq("rider_id", rider.id)
+        .eq("status", "cancelled")
+        .is("return_verified_at", null)
+        .order("created_at", { ascending: false })
+
+    // Combine orders - cancelled orders first (more urgent)
+    const orders = [...(cancelledOrders || []), ...(activeOrders || [])]
 
     const getStatusConfig = (status: string) => {
         switch (status) {
@@ -119,6 +148,7 @@ export default async function RiderDashboardPage() {
             case 'preparing': return 'Preparing'
             case 'ready': return 'Ready for pickup'
             case 'out_for_delivery': return 'On the way'
+            case 'cancelled': return 'Return Required'
             default: return status
         }
     }
@@ -243,6 +273,7 @@ export default async function RiderDashboardPage() {
                                     const isPreparing = order.status === 'preparing'
                                     const isReady = order.status === 'ready'
                                     const isOnTheWay = order.status === 'out_for_delivery'
+                                    const isCancelled = order.status === 'cancelled'
                                     const isCOD = order.payment_method === 'cod'
 
                                     return (
@@ -256,21 +287,28 @@ export default async function RiderDashboardPage() {
                                                     relative overflow-hidden rounded-2xl border bg-white dark:bg-gray-900 
                                                     shadow-sm hover:shadow-md transition-all
                                                     ${isPreparing ? 'opacity-70' : 'active:scale-[0.99]'}
-                                                    ${isCOD ? 'border-amber-300 dark:border-amber-700' : 'border-gray-200 dark:border-gray-800'}
+                                                    ${isCancelled
+                                                        ? 'border-red-300 dark:border-red-700'
+                                                        : isCOD
+                                                            ? 'border-amber-300 dark:border-amber-700'
+                                                            : 'border-gray-200 dark:border-gray-800'}
                                                 `}
                                             >
-                                                {/* Status Bar */}
                                                 <div className={`
                                                     px-4 py-2 flex items-center justify-between text-sm font-medium
-                                                    ${isPreparing
-                                                        ? 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400'
-                                                        : isReady
-                                                            ? 'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400'
-                                                            : 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400'
+                                                    ${isCancelled
+                                                        ? 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400'
+                                                        : isPreparing
+                                                            ? 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400'
+                                                            : isReady
+                                                                ? 'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400'
+                                                                : 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400'
                                                     }
                                                 `}>
                                                     <div className="flex items-center gap-2">
-                                                        {isPreparing ? (
+                                                        {isCancelled ? (
+                                                            <RotateCcw className="h-4 w-4" />
+                                                        ) : isPreparing ? (
                                                             <ChefHat className="h-4 w-4" />
                                                         ) : isReady ? (
                                                             <CheckCircle2 className="h-4 w-4" />
@@ -303,7 +341,11 @@ export default async function RiderDashboardPage() {
                                                             <p className="text-xl font-bold text-gray-900 dark:text-white">
                                                                 ₹{order.total_amount}
                                                             </p>
-                                                            {isCOD && (
+                                                            {isCancelled ? (
+                                                                <p className="text-xs font-semibold text-red-600 dark:text-red-400">
+                                                                    Cancelled
+                                                                </p>
+                                                            ) : isCOD && (
                                                                 <p className="text-xs font-semibold text-amber-600 dark:text-amber-400">
                                                                     Collect Cash
                                                                 </p>
@@ -324,12 +366,22 @@ export default async function RiderDashboardPage() {
                                                         </div>
                                                     </div>
 
-                                                    {/* COD Collection Highlight */}
-                                                    {isCOD && (
+                                                    {/* COD Collection Highlight - hide for cancelled */}
+                                                    {isCOD && !isCancelled && (
                                                         <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
                                                             <Banknote className="h-4 w-4 text-amber-600" />
                                                             <span className="text-sm font-semibold text-amber-700 dark:text-amber-400">
                                                                 Collect ₹{order.total_amount}
+                                                            </span>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Return to restaurant message for cancelled */}
+                                                    {isCancelled && (
+                                                        <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
+                                                            <RotateCcw className="h-4 w-4 text-red-600" />
+                                                            <span className="text-sm font-semibold text-red-700 dark:text-red-400">
+                                                                Return to restaurant
                                                             </span>
                                                         </div>
                                                     )}

@@ -199,9 +199,11 @@ export function AssignRiderModal({ orderId, restaurantId, currentRiderId, curren
                                             On Delivery ({busyRiders.length})
                                         </div>
                                         {busyRiders.map((rider) => (
-                                            <div
+                                            <button
                                                 key={rider.id}
-                                                className="w-full flex items-center gap-3 p-3 rounded-lg text-left opacity-50 cursor-not-allowed"
+                                                onClick={() => handleAssign(rider.id)}
+                                                disabled={isPending || rider.id === currentRiderId}
+                                                className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition-colors text-left disabled:opacity-50"
                                             >
                                                 <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
                                                     <User className="h-5 w-5 text-amber-600" />
@@ -209,7 +211,7 @@ export function AssignRiderModal({ orderId, restaurantId, currentRiderId, curren
                                                 <div className="flex-1 min-w-0">
                                                     <p className="font-medium truncate">{rider.name}</p>
                                                     <p className="text-sm text-muted-foreground">
-                                                        Currently on delivery
+                                                        On delivery • Can accept
                                                     </p>
                                                 </div>
                                                 {rider.id === currentRiderId && (
@@ -218,7 +220,7 @@ export function AssignRiderModal({ orderId, restaurantId, currentRiderId, curren
                                                         Assigned
                                                     </Badge>
                                                 )}
-                                            </div>
+                                            </button>
                                         ))}
                                     </>
                                 )}

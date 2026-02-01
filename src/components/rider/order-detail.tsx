@@ -20,8 +20,9 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { pickupOrder, deliverOrder } from '@/app/rider/actions'
+import { pickupOrder, deliverOrder, confirmReturnOtp } from '@/app/rider/actions'
 import { toast } from 'sonner'
+import { Input } from '@/components/ui/input'
 
 interface OrderItem {
     id: string
@@ -70,6 +71,9 @@ export function RiderOrderDetail({ order, riderId }: RiderOrderDetailProps) {
     const [locationError, setLocationError] = useState<string | null>(null)
     const [isGettingLocation, setIsGettingLocation] = useState(false)
     const [paymentCollected, setPaymentCollected] = useState(false)
+    const [returnOtp, setReturnOtp] = useState('')
+    const [returnError, setReturnError] = useState('')
+    const [isVerifyingReturn, setIsVerifyingReturn] = useState(false)
 
     const isReady = order.status === 'ready'
     const isOnTheWay = order.status === 'out_for_delivery'
@@ -141,6 +145,28 @@ export function RiderOrderDetail({ order, riderId }: RiderOrderDetailProps) {
         })
     }
 
+    const handleConfirmReturn = async () => {
+        if (returnOtp.length !== 6) {
+            setReturnError('Please enter a valid 6-digit OTP')
+            return
+        }
+
+        setReturnError('')
+        setIsVerifyingReturn(true)
+
+        const result = await confirmReturnOtp(order.id, riderId, returnOtp)
+
+        setIsVerifyingReturn(false)
+
+        if (result.error) {
+            setReturnError(result.error)
+            toast.error(result.error)
+        } else {
+            toast.success('Return confirmed! You are now available for new orders.')
+            router.push('/rider')
+        }
+    }
+
     const getDirectionsUrl = () => {
         if (order.customer_latitude && order.customer_longitude) {
             return `https://www.google.com/maps/dir/?api=1&destination=${order.customer_latitude},${order.customer_longitude}`
@@ -183,77 +209,110 @@ export function RiderOrderDetail({ order, riderId }: RiderOrderDetailProps) {
             <div className="max-w-lg mx-auto px-4 py-5 space-y-4">
                 {/* Simple Stepper */}
                 <div className="bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-200 dark:border-gray-800">
-                    <div className="relative flex items-start justify-between">
-                        {/* Connecting Line - absolute positioned to touch icons */}
-                        <div className="absolute top-5 left-5 right-5 flex items-center" style={{ transform: 'translateY(-50%)' }}>
-                            <div className="w-5" /> {/* Spacer for first icon */}
-                            {/* Line is green if Pickup is completed (meaning we are at least out_for_delivery) */}
-                            <div className={`flex-1 h-0.5 ${['out_for_delivery', 'delivered'].includes(order.status) ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-700'}`} />
-                            <div className="w-5" /> {/* Spacer for second icon */}
-                        </div>
-
-                        {/* Step 1: Pickup */}
-                        <div className="relative z-10 flex flex-col items-center gap-1">
-                            <div className={`
-                                w-10 h-10 rounded-full flex items-center justify-center border-2 bg-white dark:bg-gray-900 transition-all
-                                ${['out_for_delivery', 'delivered'].includes(order.status)
-                                    ? 'border-green-500 text-green-500' // Completed
-                                    : isReady
-                                        ? 'border-green-500 text-green-500 ring-4 ring-green-100 dark:ring-green-900/30' // Current
-                                        : 'border-gray-300 dark:border-gray-600 text-gray-400' // Pending
-                                }
-                            `}>
-                                {['out_for_delivery', 'delivered'].includes(order.status) ? (
-                                    <Check className="h-5 w-5" />
-                                ) : (
-                                    <span className="font-semibold text-sm">1</span>
-                                )}
+                    {isCancelled ? (
+                        /* Cancelled Order Stepper */
+                        <div className="relative flex items-start justify-between">
+                            {/* Connecting Line */}
+                            <div className="absolute top-5 left-5 right-5 flex items-center" style={{ transform: 'translateY(-50%)' }}>
+                                <div className="w-5" />
+                                <div className="flex-1 h-0.5 bg-red-500" />
+                                <div className="w-5" />
                             </div>
-                            <span className={`text-sm font-medium ${['out_for_delivery', 'delivered'].includes(order.status) || isReady
-                                ? 'text-green-600 dark:text-green-400'
-                                : 'text-gray-500'
-                                }`}>
-                                Pickup
-                            </span>
-                            {order.picked_up_at && (
-                                <span className="text-[10px] text-gray-400">
-                                    {new Date(order.picked_up_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+
+                            {/* Step 1: Picked Up */}
+                            <div className="relative z-10 flex flex-col items-center gap-1">
+                                <div className="w-10 h-10 rounded-full flex items-center justify-center border-2 bg-white dark:bg-gray-900 border-green-500 text-green-500">
+                                    <Check className="h-5 w-5" />
+                                </div>
+                                <span className="text-sm font-medium text-green-600 dark:text-green-400">
+                                    Picked Up
                                 </span>
-                            )}
-                        </div>
-
-                        {/* Step 2: Deliver */}
-                        <div className="relative z-10 flex flex-col items-center gap-1">
-                            <div className={`
-                                w-10 h-10 rounded-full flex items-center justify-center border-2 bg-white dark:bg-gray-900 transition-all
-                                ${order.status === 'delivered'
-                                    ? 'border-green-500 text-green-500' // Completed
-                                    : isOnTheWay
-                                        ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white ring-4 ring-gray-100 dark:ring-gray-800' // Current
-                                        : 'border-gray-300 dark:border-gray-600 text-gray-400' // Pending
-                                }
-                            `}>
-                                {order.status === 'delivered' ? (
-                                    <Check className="h-5 w-5" />
-                                ) : (
-                                    <span className="font-semibold text-sm">2</span>
-                                )}
                             </div>
-                            <span className={`text-sm font-medium ${order.status === 'delivered'
-                                ? 'text-green-600 dark:text-green-400'
-                                : isOnTheWay
-                                    ? 'text-gray-900 dark:text-white'
+
+                            {/* Step 2: Cancelled */}
+                            <div className="relative z-10 flex flex-col items-center gap-1">
+                                <div className="w-10 h-10 rounded-full flex items-center justify-center border-2 bg-red-500 border-red-500 text-white ring-4 ring-red-100 dark:ring-red-900/30">
+                                    <XCircle className="h-5 w-5" />
+                                </div>
+                                <span className="text-sm font-medium text-red-600 dark:text-red-400">
+                                    Cancelled
+                                </span>
+                            </div>
+                        </div>
+                    ) : (
+                        /* Normal Order Stepper */
+                        <div className="relative flex items-start justify-between">
+                            {/* Connecting Line - absolute positioned to touch icons */}
+                            <div className="absolute top-5 left-5 right-5 flex items-center" style={{ transform: 'translateY(-50%)' }}>
+                                <div className="w-5" /> {/* Spacer for first icon */}
+                                {/* Line is green if Pickup is completed (meaning we are at least out_for_delivery) */}
+                                <div className={`flex-1 h-0.5 ${['out_for_delivery', 'delivered'].includes(order.status) ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-700'}`} />
+                                <div className="w-5" /> {/* Spacer for second icon */}
+                            </div>
+
+                            {/* Step 1: Pickup */}
+                            <div className="relative z-10 flex flex-col items-center gap-1">
+                                <div className={`
+                                    w-10 h-10 rounded-full flex items-center justify-center border-2 bg-white dark:bg-gray-900 transition-all
+                                    ${['out_for_delivery', 'delivered'].includes(order.status)
+                                        ? 'border-green-500 text-green-500' // Completed
+                                        : isReady
+                                            ? 'border-green-500 text-green-500 ring-4 ring-green-100 dark:ring-green-900/30' // Current
+                                            : 'border-gray-300 dark:border-gray-600 text-gray-400' // Pending
+                                    }
+                                `}>
+                                    {['out_for_delivery', 'delivered'].includes(order.status) ? (
+                                        <Check className="h-5 w-5" />
+                                    ) : (
+                                        <span className="font-semibold text-sm">1</span>
+                                    )}
+                                </div>
+                                <span className={`text-sm font-medium ${['out_for_delivery', 'delivered'].includes(order.status) || isReady
+                                    ? 'text-green-600 dark:text-green-400'
                                     : 'text-gray-500'
-                                }`}>
-                                Deliver
-                            </span>
-                            {order.delivered_at && (
-                                <span className="text-[10px] text-gray-400">
-                                    {new Date(order.delivered_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                                    }`}>
+                                    Pickup
                                 </span>
-                            )}
+                                {order.picked_up_at && (
+                                    <span className="text-[10px] text-gray-400">
+                                        {new Date(order.picked_up_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* Step 2: Deliver */}
+                            <div className="relative z-10 flex flex-col items-center gap-1">
+                                <div className={`
+                                    w-10 h-10 rounded-full flex items-center justify-center border-2 bg-white dark:bg-gray-900 transition-all
+                                    ${order.status === 'delivered'
+                                        ? 'border-green-500 text-green-500' // Completed
+                                        : isOnTheWay
+                                            ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white ring-4 ring-gray-100 dark:ring-gray-800' // Current
+                                            : 'border-gray-300 dark:border-gray-600 text-gray-400' // Pending
+                                    }
+                                `}>
+                                    {order.status === 'delivered' ? (
+                                        <Check className="h-5 w-5" />
+                                    ) : (
+                                        <span className="font-semibold text-sm">2</span>
+                                    )}
+                                </div>
+                                <span className={`text-sm font-medium ${order.status === 'delivered'
+                                    ? 'text-green-600 dark:text-green-400'
+                                    : isOnTheWay
+                                        ? 'text-gray-900 dark:text-white'
+                                        : 'text-gray-500'
+                                    }`}>
+                                    Deliver
+                                </span>
+                                {order.delivered_at && (
+                                    <span className="text-[10px] text-gray-400">
+                                        {new Date(order.delivered_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                )}
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </div>
 
                 {/* Cancelled Order Alert */}
@@ -271,26 +330,52 @@ export function RiderOrderDetail({ order, riderId }: RiderOrderDetailProps) {
                             </div>
                         </div>
 
-                        {/* Return Instructions */}
-                        <div className="mt-4 p-4 bg-white dark:bg-gray-900 rounded-xl border border-red-200 dark:border-red-800">
+                        {/* Return Instructions with OTP Input */}
+                        <div className="mt-4 p-4 bg-white dark:bg-gray-900 rounded-xl border border-amber-200 dark:border-amber-800">
                             <div className="flex items-center gap-2 mb-2">
                                 <RotateCcw className="h-4 w-4 text-amber-600" />
                                 <span className="font-semibold text-amber-700 dark:text-amber-400">Return Required</span>
                             </div>
                             <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                                Please return the order to the restaurant and share this OTP with them:
+                                Return the order to {order.restaurant?.name || 'the restaurant'} and enter the OTP they give you:
                             </p>
 
-                            {order.return_otp && (
-                                <div className="text-center py-4 bg-amber-50 dark:bg-amber-950/30 rounded-lg">
-                                    <p className="text-xs text-amber-600 mb-1">Return OTP</p>
-                                    <p className="text-4xl font-mono font-bold text-amber-700 tracking-widest">{order.return_otp}</p>
-                                </div>
-                            )}
+                            <div className="space-y-3">
+                                <Input
+                                    type="text"
+                                    inputMode="numeric"
+                                    maxLength={6}
+                                    placeholder="Enter 6-digit OTP"
+                                    value={returnOtp}
+                                    onChange={(e) => {
+                                        setReturnOtp(e.target.value.replace(/\D/g, ''))
+                                        setReturnError('')
+                                    }}
+                                    className="text-center text-2xl font-mono tracking-widest"
+                                />
 
-                            <p className="text-xs text-gray-500 mt-3 text-center">
-                                Navigate back to {order.restaurant?.name || 'the restaurant'} to complete the return.
-                            </p>
+                                {returnError && (
+                                    <p className="text-sm text-red-500 text-center">{returnError}</p>
+                                )}
+
+                                <Button
+                                    onClick={handleConfirmReturn}
+                                    disabled={isVerifyingReturn || returnOtp.length !== 6}
+                                    className="w-full bg-amber-600 hover:bg-amber-700"
+                                >
+                                    {isVerifyingReturn ? (
+                                        <>
+                                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                            Verifying...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <CheckCircle2 className="h-4 w-4 mr-2" />
+                                            Confirm Return
+                                        </>
+                                    )}
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 )}
@@ -361,50 +446,52 @@ export function RiderOrderDetail({ order, riderId }: RiderOrderDetailProps) {
                     </div>
                 )}
 
-                {/* Payment Section */}
-                <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-                    <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2">
-                        {isCOD ? <Banknote className="h-4 w-4 text-gray-500" /> : <CreditCard className="h-4 w-4 text-gray-500" />}
-                        <span className="font-medium text-sm text-gray-900 dark:text-white">Payment</span>
-                    </div>
-                    <div className="p-4">
-                        {isCOD ? (
-                            <div className="space-y-4">
+                {/* Payment Section - hide for cancelled orders */}
+                {!isCancelled && (
+                    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+                        <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2">
+                            {isCOD ? <Banknote className="h-4 w-4 text-gray-500" /> : <CreditCard className="h-4 w-4 text-gray-500" />}
+                            <span className="font-medium text-sm text-gray-900 dark:text-white">Payment</span>
+                        </div>
+                        <div className="p-4">
+                            {isCOD ? (
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="font-medium text-gray-900 dark:text-white">Cash on Delivery</p>
+                                            <p className="text-sm text-gray-500 dark:text-gray-400">Collect from customer</p>
+                                        </div>
+                                        <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                                            ₹{order.total_amount}
+                                        </p>
+                                    </div>
+
+                                    {isOnTheWay && (
+                                        <label className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                                            <Checkbox
+                                                id="payment-collected"
+                                                checked={paymentCollected}
+                                                onCheckedChange={(checked) => setPaymentCollected(checked === true)}
+                                                className="h-5 w-5"
+                                            />
+                                            <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                                I have collected ₹{order.total_amount}
+                                            </span>
+                                        </label>
+                                    )}
+                                </div>
+                            ) : (
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <p className="font-medium text-gray-900 dark:text-white">Cash on Delivery</p>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400">Collect from customer</p>
+                                        <p className="font-medium text-gray-900 dark:text-white">Paid Online</p>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400">No collection needed</p>
                                     </div>
-                                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                                        ₹{order.total_amount}
-                                    </p>
+                                    <CheckCircle2 className="h-5 w-5 text-green-500" />
                                 </div>
-
-                                {isOnTheWay && (
-                                    <label className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                                        <Checkbox
-                                            id="payment-collected"
-                                            checked={paymentCollected}
-                                            onCheckedChange={(checked) => setPaymentCollected(checked === true)}
-                                            className="h-5 w-5"
-                                        />
-                                        <span className="text-sm font-medium text-gray-900 dark:text-white">
-                                            I have collected ₹{order.total_amount}
-                                        </span>
-                                    </label>
-                                )}
-                            </div>
-                        ) : (
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="font-medium text-gray-900 dark:text-white">Paid Online</p>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">No collection needed</p>
-                                </div>
-                                <CheckCircle2 className="h-5 w-5 text-green-500" />
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {/* Order Items */}
                 <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
