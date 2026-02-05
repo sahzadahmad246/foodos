@@ -2,17 +2,17 @@
 
 import { useState, useTransition } from 'react'
 import { Switch } from '@/components/ui/switch'
-import { toggleRiderStatus } from '@/app/rider/actions'
+import { arrivedAtRestaurant, toggleRiderStatus } from '@/app/rider/actions'
 import { toast } from 'sonner'
 
 interface RiderStatusToggleProps {
     riderId: string
-    currentStatus: 'online' | 'offline' | 'on_delivery'
+    currentStatus: 'online' | 'offline' | 'on_delivery' | 'returning'
 }
 
 export function RiderStatusToggle({ riderId, currentStatus }: RiderStatusToggleProps) {
     const [isPending, startTransition] = useTransition()
-    const [isOnline, setIsOnline] = useState(currentStatus !== 'offline')
+    const [isOnline, setIsOnline] = useState(currentStatus === 'online')
 
     const handleToggle = (checked: boolean) => {
         if (currentStatus === 'on_delivery') {
@@ -20,14 +20,53 @@ export function RiderStatusToggle({ riderId, currentStatus }: RiderStatusToggleP
             return
         }
 
-        setIsOnline(checked)
+        if (checked) {
+            if (!navigator.geolocation) {
+                toast.error('Location not supported by your browser')
+                setIsOnline(false)
+                return
+            }
+
+            setIsOnline(false)
+            startTransition(async () => {
+                navigator.geolocation.getCurrentPosition(
+                    async (position) => {
+                        const result = await arrivedAtRestaurant(
+                            riderId,
+                            position.coords.latitude,
+                            position.coords.longitude
+                        )
+
+                        if (result.error) {
+                            if ('distance' in result) {
+                                toast.error(`${result.error}. You are ${result.distance}m away.`)
+                            } else {
+                                toast.error(result.error)
+                            }
+                            setIsOnline(false)
+                        } else {
+                            toast.success('You are now online')
+                            setIsOnline(true)
+                        }
+                    },
+                    () => {
+                        toast.error('Could not get your location. Please check permissions.')
+                        setIsOnline(false)
+                    },
+                    { enableHighAccuracy: true, timeout: 10000 }
+                )
+            })
+            return
+        }
+
+        setIsOnline(false)
         startTransition(async () => {
-            const result = await toggleRiderStatus(riderId, checked ? 'online' : 'offline')
+            const result = await toggleRiderStatus(riderId, 'offline')
             if (result.error) {
                 toast.error(result.error)
-                setIsOnline(!checked) // Revert
+                setIsOnline(true) // Revert
             } else {
-                toast.success(checked ? 'You are now online' : 'You are now offline')
+                toast.success('You are now offline')
             }
         })
     }

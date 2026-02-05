@@ -79,15 +79,53 @@ export function RiderOrderDetail({ order, riderId }: RiderOrderDetailProps) {
     const isOnTheWay = order.status === 'out_for_delivery'
     const isCancelled = order.status === 'cancelled'
     const isCOD = order.payment_method === 'cod'
+    const requiresLocationCheck = !!order.customer_latitude && !!order.customer_longitude
+
+    const calculateDistanceMeters = (
+        lat1: number,
+        lng1: number,
+        lat2: number,
+        lng2: number
+    ) => {
+        const R = 6371000
+        const toRad = (deg: number) => deg * (Math.PI / 180)
+        const dLat = toRad(lat2 - lat1)
+        const dLng = toRad(lng2 - lng1)
+        const a =
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+            Math.sin(dLng / 2) * Math.sin(dLng / 2)
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+        return R * c
+    }
+
+    const riderDistanceMeters =
+        requiresLocationCheck && riderLocation
+            ? calculateDistanceMeters(
+                riderLocation.lat,
+                riderLocation.lng,
+                order.customer_latitude as number,
+                order.customer_longitude as number
+            )
+            : null
+
+    const isLocationVerified = !requiresLocationCheck || (
+        riderLocation &&
+        !locationError &&
+        riderDistanceMeters !== null &&
+        riderDistanceMeters <= 200
+    )
 
     const getRiderLocation = () => {
         if (!navigator.geolocation) {
             setLocationError('Location not supported by your browser')
+            setRiderLocation(null)
             return
         }
 
         setIsGettingLocation(true)
         setLocationError(null)
+        setRiderLocation(null)
 
         navigator.geolocation.getCurrentPosition(
             (position) => {
@@ -99,7 +137,16 @@ export function RiderOrderDetail({ order, riderId }: RiderOrderDetailProps) {
             },
             (error) => {
                 console.error('Geolocation error:', error)
-                setLocationError('Could not get your location. Please enable location access.')
+                if (error.code === error.PERMISSION_DENIED) {
+                    setLocationError('Location is blocked. Enable it in your browser settings, then tap Retry.')
+                } else if (error.code === error.POSITION_UNAVAILABLE) {
+                    setLocationError('Location unavailable. Please try again.')
+                } else if (error.code === error.TIMEOUT) {
+                    setLocationError('Location request timed out. Please try again.')
+                } else {
+                    setLocationError('Could not get your location. Please enable location access.')
+                }
+                setRiderLocation(null)
                 setIsGettingLocation(false)
             },
             { enableHighAccuracy: true, timeout: 10000 }
@@ -182,6 +229,7 @@ export function RiderOrderDetail({ order, riderId }: RiderOrderDetailProps) {
         : null
 
     const canMarkDelivered = !isCOD || paymentCollected
+    const canConfirmDelivery = canMarkDelivered && isLocationVerified && !isGettingLocation
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-950 pb-24">
@@ -605,10 +653,38 @@ export function RiderOrderDetail({ order, riderId }: RiderOrderDetailProps) {
                                     </div>
                                 )}
 
-                                {riderLocation && !locationError && (
+                                {locationError && !isGettingLocation && (
+                                    <div>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={getRiderLocation}
+                                            className="rounded-lg"
+                                        >
+                                            Retry location
+                                        </Button>
+                                    </div>
+                                )}
+
+                                {requiresLocationCheck && isLocationVerified && (
                                     <div className="flex items-center gap-2 text-sm text-green-600">
                                         <MapPin className="h-4 w-4" />
                                         Location verified
+                                    </div>
+                                )}
+
+                                {requiresLocationCheck && riderLocation && !locationError && riderDistanceMeters !== null && riderDistanceMeters > 200 && (
+                                    <div className="flex items-center gap-2 text-sm text-amber-600">
+                                        <MapPinOff className="h-4 w-4" />
+                                        Too far from customer ({Math.round(riderDistanceMeters)}m away)
+                                    </div>
+                                )}
+
+                                {!requiresLocationCheck && (
+                                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                                        <MapPin className="h-4 w-4" />
+                                        Location not required for this order
                                     </div>
                                 )}
 
@@ -627,8 +703,11 @@ export function RiderOrderDetail({ order, riderId }: RiderOrderDetailProps) {
                         </AlertDialogCancel>
                         <AlertDialogAction
                             onClick={handleDeliver}
-                            disabled={isPending || isGettingLocation}
-                            className="rounded-xl bg-green-600 hover:bg-green-700"
+                            disabled={isPending || !canConfirmDelivery}
+                            className={`rounded-xl ${canConfirmDelivery
+                                ? 'bg-green-600 hover:bg-green-700'
+                                : 'bg-gray-300 dark:bg-gray-700 cursor-not-allowed'
+                                }`}
                         >
                             {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                             Confirm

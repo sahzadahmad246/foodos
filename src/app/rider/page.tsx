@@ -100,6 +100,8 @@ export default async function RiderDashboardPage() {
     // Combine orders - cancelled orders first (more urgent)
     const orders = [...(cancelledOrders || []), ...(activeOrders || [])]
 
+    const activeOrderCount = activeOrders?.length || 0
+
     const getStatusConfig = (status: string) => {
         switch (status) {
             case 'online':
@@ -152,6 +154,8 @@ export default async function RiderDashboardPage() {
             default: return status
         }
     }
+
+    const showEmptyState = (!orders || orders.length === 0) && rider.status !== 'returning'
 
     return (
         <RealtimeRiderOrders riderId={rider.id}>
@@ -210,7 +214,7 @@ export default async function RiderDashboardPage() {
                     </div>
 
                     {/* Returning Card */}
-                    {rider.status === 'returning' && (
+                    {rider.status === 'returning' && activeOrderCount === 0 && (
                         <RiderReturnCard riderId={rider.id} restaurant={rider.restaurant} />
                     )}
 
@@ -230,7 +234,7 @@ export default async function RiderDashboardPage() {
                             </div>
                         </div>
 
-                        {!orders || orders.length === 0 ? (
+                        {showEmptyState ? (
                             <div className="relative overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
                                 <div className="p-10 text-center">
                                     <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
@@ -267,7 +271,7 @@ export default async function RiderDashboardPage() {
                                     </>
                                 )}
                             </div>
-                        ) : (
+                        ) : orders && orders.length > 0 ? (
                             <div className="space-y-4">
                                 {orders.map((order) => {
                                     const isPreparing = order.status === 'preparing'
@@ -391,7 +395,7 @@ export default async function RiderDashboardPage() {
                                     )
                                 })}
                             </div>
-                        )}
+                        ) : null}
                     </div>
                 </div>
             </div>
