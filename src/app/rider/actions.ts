@@ -257,3 +257,62 @@ export async function confirmReturnOtp(orderId: string, riderId: string, otp: st
     revalidatePath('/dashboard/orders')
     return { success: true }
 }
+
+export async function requestCashDeposit(amount: number, note?: string) {
+    const supabase = await createClient()
+    const {
+        data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+        return { error: 'Unauthorized' }
+    }
+
+    if (!amount || amount <= 0) {
+        return { error: 'Invalid amount' }
+    }
+
+    const { data: riderByUserId } = await supabase
+        .from('riders')
+        .select('id, restaurant_id, cash_in_hand')
+        .eq('user_id', user.id)
+        .single()
+
+    const rider =
+        riderByUserId ||
+        (user.email
+            ? await supabase
+                .from('riders')
+                .select('id, restaurant_id, cash_in_hand')
+                .eq('email', user.email)
+                .single()
+                .then((res) => res.data)
+            : null)
+
+    if (!rider) {
+        return { error: 'Rider not found' }
+    }
+
+    const cashInHand = Number(rider.cash_in_hand || 0)
+    if (amount > cashInHand) {
+        return { error: 'Amount exceeds cash in hand' }
+    }
+
+    const { error } = await supabase
+        .from('rider_cash_deposit_requests')
+        .insert({
+            rider_id: rider.id,
+            restaurant_id: rider.restaurant_id,
+            amount,
+            note: note || null,
+            status: 'pending'
+        })
+
+    if (error) {
+        console.error('Error creating deposit request:', error)
+        return { error: 'Failed to create request' }
+    }
+
+    revalidatePath('/rider')
+    return { success: true }
+}

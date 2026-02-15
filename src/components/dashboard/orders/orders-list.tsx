@@ -41,6 +41,7 @@ interface Order {
     rider?: {
         id: string
         name: string
+        phone?: string | null
     } | null
 }
 
@@ -108,18 +109,6 @@ export function OrdersList({ orders }: OrdersListProps) {
         return counts
     }, [orders])
 
-    if (orders.length === 0) {
-        return (
-            <div className="rounded-lg border border-dashed p-12 text-center">
-                <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="font-semibold text-lg mb-2">No orders yet</h3>
-                <p className="text-muted-foreground text-sm">
-                    Orders from customers will appear here
-                </p>
-            </div>
-        )
-    }
-
     return (
         <div className="space-y-4">
             {/* Search */}
@@ -131,6 +120,7 @@ export function OrdersList({ orders }: OrdersListProps) {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-9"
+                    disabled={orders.length === 0}
                 />
             </div>
 
@@ -169,9 +159,17 @@ export function OrdersList({ orders }: OrdersListProps) {
                                 <p className="text-muted-foreground">
                                     {searchQuery
                                         ? 'No orders match your search'
-                                        : `No ${tab.label.toLowerCase()} orders`
+                                        : orders.length === 0
+                                            ? 'Orders from customers will appear here'
+                                            : `No ${tab.label.toLowerCase()} orders`
                                     }
                                 </p>
+                                {orders.length === 0 && !searchQuery && (
+                                    <div className="mt-4 flex items-center justify-center gap-2 text-[11px] text-muted-foreground/70">
+                                        <span className="inline-flex h-1.5 w-1.5 rounded-full bg-muted-foreground/60" />
+                                        Listening for new orders...
+                                    </div>
+                                )}
                             </div>
                         ) : (
                             <div className="grid gap-4 lg:grid-cols-2">

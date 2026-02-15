@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useRef, useState } from 'react'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -109,6 +109,9 @@ export function NewOrderModal({ order, open, onClose }: NewOrderModalProps) {
     return (
         <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
             <DialogContent className="max-w-md p-0 overflow-hidden border-2 border-primary animate-pulse-border max-h-[90vh] flex flex-col">
+                <DialogHeader className="sr-only">
+                    <DialogTitle>New order notification</DialogTitle>
+                </DialogHeader>
                 {/* Animated Header */}
                 <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground p-6 text-center flex-shrink-0">
                     <div className="animate-bounce mb-2">

@@ -1,15 +1,25 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+    DialogDescription,
+    DialogClose,
+} from '@/components/ui/dialog'
 import {
     AlertDialog,
     AlertDialogAction,
@@ -20,8 +30,8 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { MoreVertical, Phone, Bike, Car, Power, Trash2, User, Mail } from 'lucide-react'
-import { toggleRiderActive, deleteRider } from '@/app/dashboard/riders/actions'
+import { MoreVertical, Phone, Bike, Car, Power, Trash2, User, Mail, Banknote, ArrowDownCircle, ArrowUpCircle } from 'lucide-react'
+import { toggleRiderActive, deleteRider, recordRiderCashDeposit, approveDepositRequest, rejectDepositRequest } from '@/app/dashboard/riders/actions'
 import { toast } from 'sonner'
 
 interface Rider {
@@ -33,21 +43,47 @@ interface Rider {
     vehicle_number: string
     status: 'online' | 'offline' | 'on_delivery'
     is_active: boolean
+    cash_in_hand?: number | null
+    cash_collected_total?: number | null
+    cash_deposited_total?: number | null
+    delivered_count?: number | null
 }
 
 interface RiderCardProps {
     rider: Rider
+    ledgerEntries: Array<{
+        id: string
+        type: 'collect' | 'deposit'
+        amount: number
+        created_at: string
+        order?: {
+            order_number?: string | null
+        } | null
+    }>
+    depositRequests: Array<{
+        id: string
+        amount: number
+        status: 'pending' | 'approved' | 'rejected' | 'cancelled'
+        note?: string | null
+        requested_at: string
+    }>
 }
 
-export function RiderCard({ rider }: RiderCardProps) {
+export function RiderCard({ rider, ledgerEntries, depositRequests }: RiderCardProps) {
     const [showDeleteDialog, setShowDeleteDialog] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
+    const [depositOpen, setDepositOpen] = useState(false)
+    const [depositAmount, setDepositAmount] = useState('')
+    const [depositNote, setDepositNote] = useState('')
+    const [ledgerOpen, setLedgerOpen] = useState(false)
+    const [isPending, startTransition] = useTransition()
 
     const statusConfig = {
         online: { label: 'Online', color: 'bg-green-500' },
         offline: { label: 'Offline', color: 'bg-gray-400' },
-        on_delivery: { label: 'On Delivery', color: 'bg-blue-500' }
-    }
+        on_delivery: { label: 'On Delivery', color: 'bg-blue-500' },
+        returning: { label: 'Returning', color: 'bg-amber-500' }
+    } as const
 
     const handleToggleActive = async () => {
         setIsLoading(true)
@@ -73,6 +109,64 @@ export function RiderCard({ rider }: RiderCardProps) {
     }
 
     const VehicleIcon = rider.vehicle_type === 'car' ? Car : Bike
+    const cashInHand = Number(rider.cash_in_hand || 0)
+    const deliveredCount = Number(rider.delivered_count || 0)
+    const recentLedger = ledgerEntries.slice(0, 3)
+    const pendingRequests = depositRequests.filter((r) => r.status === 'pending')
+    const formatLedgerTime = (value: string) => {
+        try {
+            return new Date(value).toLocaleString('en-IN', {
+                day: '2-digit',
+                month: 'short',
+                hour: '2-digit',
+                minute: '2-digit'
+            })
+        } catch {
+            return value
+        }
+    }
+
+    const handleDeposit = () => {
+        const amount = Number(depositAmount)
+        if (!amount || amount <= 0) {
+            toast.error('Enter a valid amount')
+            return
+        }
+
+        startTransition(async () => {
+            const result = await recordRiderCashDeposit(rider.id, amount, depositNote)
+            if (result.error) {
+                toast.error(result.error)
+            } else {
+                toast.success('Deposit recorded')
+                setDepositOpen(false)
+                setDepositAmount('')
+                setDepositNote('')
+            }
+        })
+    }
+
+    const handleApproveRequest = (requestId: string) => {
+        startTransition(async () => {
+            const result = await approveDepositRequest(requestId)
+            if (result.error) {
+                toast.error(result.error)
+            } else {
+                toast.success('Request approved')
+            }
+        })
+    }
+
+    const handleRejectRequest = (requestId: string) => {
+        startTransition(async () => {
+            const result = await rejectDepositRequest(requestId)
+            if (result.error) {
+                toast.error(result.error)
+            } else {
+                toast.success('Request rejected')
+            }
+        })
+    }
 
     return (
         <>
@@ -143,6 +237,97 @@ export function RiderCard({ rider }: RiderCardProps) {
                             )}
                         </div>
                     </div>
+
+                    <div className="mt-4 rounded-xl border border-border/60 bg-background/60 p-3 space-y-3">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-sm font-semibold">
+                                <Banknote className="h-4 w-4 text-emerald-600" />
+                                Cash in hand
+                            </div>
+                            <div className="text-lg font-bold">₹{cashInHand.toFixed(0)}</div>
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                            <span>Delivered</span>
+                            <span className="font-medium text-foreground">{deliveredCount}</span>
+                        </div>
+
+                        {pendingRequests.length > 0 && (
+                            <div className="space-y-2">
+                                {pendingRequests.map((req) => (
+                                    <div key={req.id} className="rounded-lg border border-amber-200 bg-amber-50/60 p-2">
+                                        <div className="flex items-center justify-between text-xs">
+                                            <span className="font-medium text-amber-900">
+                                                Deposit request • ₹{Number(req.amount || 0).toFixed(0)}
+                                            </span>
+                                            <span className="text-amber-700">Pending</span>
+                                        </div>
+                                        {req.note && (
+                                            <div className="text-[11px] text-amber-800/70 mt-1">{req.note}</div>
+                                        )}
+                                        <div className="mt-2 flex gap-2">
+                                            <Button
+                                                size="sm"
+                                                className="h-7 px-2 bg-emerald-600 hover:bg-emerald-700"
+                                                disabled={isPending}
+                                                onClick={() => handleApproveRequest(req.id)}
+                                            >
+                                                Approve
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="h-7 px-2"
+                                                disabled={isPending}
+                                                onClick={() => handleRejectRequest(req.id)}
+                                            >
+                                                Reject
+                                            </Button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {recentLedger.length > 0 && (
+                            <div className="space-y-2">
+                                {recentLedger.map((entry) => (
+                                    <div key={entry.id} className="flex items-center justify-between text-xs">
+                                        <div className="flex items-center gap-2">
+                                            {entry.type === 'collect' ? (
+                                                <ArrowDownCircle className="h-4 w-4 text-emerald-600" />
+                                            ) : (
+                                                <ArrowUpCircle className="h-4 w-4 text-blue-600" />
+                                            )}
+                                            <span className="text-muted-foreground">
+                                                {entry.type === 'collect' ? 'Collected' : 'Deposited'}
+                                                {entry.order?.order_number ? ` • ${entry.order.order_number}` : ''}
+                                            </span>
+                                        </div>
+                                        <span className={`font-semibold ${entry.type === 'collect' ? 'text-emerald-700' : 'text-blue-700'}`}>
+                                            ₹{Number(entry.amount || 0).toFixed(0)}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        <div className="grid grid-cols-2 gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setDepositOpen(true)}
+                            >
+                                Record Deposit
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setLedgerOpen(true)}
+                            >
+                                View Ledger
+                            </Button>
+                        </div>
+                    </div>
                 </CardContent>
             </Card>
 
@@ -167,6 +352,87 @@ export function RiderCard({ rider }: RiderCardProps) {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            <Dialog open={depositOpen} onOpenChange={setDepositOpen}>
+                <DialogContent className="max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle>Record Cash Deposit</DialogTitle>
+                        <DialogDescription>
+                            Rider: {rider.name} • Cash in hand: ₹{cashInHand.toFixed(0)}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-3">
+                        <Input
+                            type="number"
+                            min="0"
+                            step="1"
+                            placeholder="Deposit amount"
+                            value={depositAmount}
+                            onChange={(e) => setDepositAmount(e.target.value)}
+                        />
+                        <Input
+                            placeholder="Note (optional)"
+                            value={depositNote}
+                            onChange={(e) => setDepositNote(e.target.value)}
+                        />
+                    </div>
+
+                    <DialogFooter>
+                        <DialogClose asChild>
+                            <Button variant="ghost" disabled={isPending}>Cancel</Button>
+                        </DialogClose>
+                        <Button onClick={handleDeposit} disabled={isPending}>
+                            {isPending ? 'Saving...' : 'Save Deposit'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={ledgerOpen} onOpenChange={setLedgerOpen}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Cash Ledger</DialogTitle>
+                        <DialogDescription>
+                            Rider: {rider.name} • Cash in hand: ₹{cashInHand.toFixed(0)}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {ledgerEntries.length === 0 ? (
+                        <div className="text-sm text-muted-foreground">No cash entries yet.</div>
+                    ) : (
+                        <div className="max-h-[320px] overflow-y-auto space-y-2">
+                            {ledgerEntries.map((entry) => (
+                                <div key={entry.id} className="flex items-center justify-between rounded-lg border border-border/60 p-2.5">
+                                    <div className="flex items-center gap-2">
+                                        {entry.type === 'collect' ? (
+                                            <ArrowDownCircle className="h-4 w-4 text-emerald-600" />
+                                        ) : (
+                                            <ArrowUpCircle className="h-4 w-4 text-blue-600" />
+                                        )}
+                                        <div className="text-xs">
+                                            <div className="font-medium">
+                                                {entry.type === 'collect' ? 'Collected' : 'Deposited'}
+                                                {entry.order?.order_number ? ` • ${entry.order.order_number}` : ''}
+                                            </div>
+                                            <div className="text-muted-foreground">{formatLedgerTime(entry.created_at)}</div>
+                                        </div>
+                                    </div>
+                                    <div className={`text-sm font-semibold ${entry.type === 'collect' ? 'text-emerald-700' : 'text-blue-700'}`}>
+                                        ₹{Number(entry.amount || 0).toFixed(0)}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    <DialogFooter>
+                        <DialogClose asChild>
+                            <Button variant="ghost">Close</Button>
+                        </DialogClose>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </>
     )
 }

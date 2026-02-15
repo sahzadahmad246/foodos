@@ -34,7 +34,7 @@ export default async function OrdersPage() {
         .select(`
             *,
             order_items(*),
-            rider:riders(id, name)
+            rider:riders(id, name, phone)
         `)
         .eq("restaurant_id", restaurant.id)
         .or(`created_at.gte.${todayISO},status.in.(pending,preparing,ready,out_for_delivery)`)

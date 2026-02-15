@@ -10,6 +10,12 @@ create type vehicle_type as enum ('bike', 'scooter', 'car', 'bicycle');
 -- Order status enum
 create type order_status as enum ('pending', 'confirmed', 'preparing', 'ready', 'out_for_delivery', 'delivered', 'cancelled');
 
+-- Rider cash ledger entry type
+create type rider_cash_entry_type as enum ('collect', 'deposit');
+
+-- Rider deposit request status
+create type rider_deposit_request_status as enum ('pending', 'approved', 'rejected', 'cancelled');
+
 -- Table: profiles (Extends auth.users)
 create table if not exists profiles (
   id uuid references auth.users on delete cascade primary key,
@@ -184,6 +190,10 @@ create table if not exists riders (
   vehicle_number text,
   is_active boolean default true,
   is_online boolean default false,
+  cash_in_hand decimal(10, 2) default 0,
+  cash_collected_total decimal(10, 2) default 0,
+  cash_deposited_total decimal(10, 2) default 0,
+  delivered_count int default 0,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -211,6 +221,42 @@ create table if not exists orders (
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
+-- Table: rider_cash_ledger
+create table if not exists rider_cash_ledger (
+  id uuid default uuid_generate_v4() primary key,
+  rider_id uuid references riders(id) on delete cascade not null,
+  restaurant_id uuid references restaurants(id) on delete cascade not null,
+  order_id uuid references orders(id) on delete set null,
+  type rider_cash_entry_type not null,
+  amount decimal(10, 2) not null,
+  note text,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+create index if not exists rider_cash_ledger_rider_id_idx on rider_cash_ledger (rider_id);
+create index if not exists rider_cash_ledger_restaurant_id_idx on rider_cash_ledger (restaurant_id);
+create index if not exists rider_cash_ledger_created_at_idx on rider_cash_ledger (created_at desc);
+create unique index if not exists rider_cash_ledger_collect_order_unique
+  on rider_cash_ledger (order_id) where type = 'collect';
+
+-- Table: rider_cash_deposit_requests
+create table if not exists rider_cash_deposit_requests (
+  id uuid default uuid_generate_v4() primary key,
+  rider_id uuid references riders(id) on delete cascade not null,
+  restaurant_id uuid references restaurants(id) on delete cascade not null,
+  amount decimal(10, 2) not null,
+  note text,
+  status rider_deposit_request_status default 'pending' not null,
+  requested_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  decided_at timestamp with time zone,
+  decided_by uuid references auth.users,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+create index if not exists rider_cash_deposit_requests_rider_id_idx on rider_cash_deposit_requests (rider_id);
+create index if not exists rider_cash_deposit_requests_restaurant_id_idx on rider_cash_deposit_requests (restaurant_id);
+create index if not exists rider_cash_deposit_requests_status_idx on rider_cash_deposit_requests (status);
+
 -- Table: order_items
 create table if not exists order_items (
   id uuid default uuid_generate_v4() primary key,
@@ -230,6 +276,8 @@ alter table menu_items enable row level security;
 alter table riders enable row level security;
 alter table orders enable row level security;
 alter table order_items enable row level security;
+alter table rider_cash_ledger enable row level security;
+alter table rider_cash_deposit_requests enable row level security;
 
 -- RLS Policies for restaurants
 create policy "Users can view their own restaurant" on restaurants
@@ -257,6 +305,58 @@ create policy "Users can update their own profile" on profiles
 create policy "Users can insert their own profile" on profiles
   for insert with check (auth.uid() = id);
 
+-- RLS Policies for rider_cash_ledger
+create policy "Owners can view their riders cash ledger" on rider_cash_ledger
+  for select using (
+    restaurant_id in (select id from restaurants where owner_id = auth.uid())
+  );
+
+create policy "Riders can view their own cash ledger" on rider_cash_ledger
+  for select using (
+    rider_id in (select id from riders where user_id = auth.uid())
+  );
+
+create policy "Owners can record rider cash deposits" on rider_cash_ledger
+  for insert with check (
+    restaurant_id in (select id from restaurants where owner_id = auth.uid())
+  );
+
+-- RLS Policies for rider_cash_deposit_requests
+create policy "Riders can create their deposit requests" on rider_cash_deposit_requests
+  for insert with check (
+    rider_id in (select id from riders where user_id = auth.uid())
+  );
+
+create policy "Riders can create deposit requests by email" on rider_cash_deposit_requests
+  for insert with check (
+    rider_id in (select id from riders where email = (auth.jwt() ->> 'email'))
+  );
+
+create policy "Riders can view their deposit requests" on rider_cash_deposit_requests
+  for select using (
+    rider_id in (select id from riders where user_id = auth.uid())
+  );
+
+create policy "Riders can cancel their pending requests" on rider_cash_deposit_requests
+  for update using (
+    rider_id in (select id from riders where user_id = auth.uid())
+    and status = 'pending'
+  )
+  with check (
+    rider_id in (select id from riders where user_id = auth.uid())
+    and status = 'cancelled'
+  );
+
+create policy "Owners can view rider deposit requests" on rider_cash_deposit_requests
+  for select using (
+    restaurant_id in (select id from restaurants where owner_id = auth.uid())
+  );
+
+create policy "Owners can decide rider deposit requests" on rider_cash_deposit_requests
+  for update using (
+    restaurant_id in (select id from restaurants where owner_id = auth.uid())
+  );
+
 -- Function to create profile on signup
 create or replace function public.handle_new_user()
 returns trigger as $$
@@ -272,3 +372,144 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
+
+-- Cash ledger application: maintain rider cash balances
+create or replace function public.apply_rider_cash_ledger()
+returns trigger as $$
+declare
+  current_cash numeric;
+begin
+  select coalesce(cash_in_hand, 0) into current_cash
+  from riders
+  where id = new.rider_id
+  for update;
+
+  if new.type = 'deposit' and current_cash < new.amount then
+    raise exception 'Deposit exceeds cash in hand';
+  end if;
+
+  if new.type = 'collect' then
+    update riders
+      set cash_in_hand = coalesce(cash_in_hand, 0) + new.amount,
+          cash_collected_total = coalesce(cash_collected_total, 0) + new.amount
+      where id = new.rider_id;
+  elsif new.type = 'deposit' then
+    update riders
+      set cash_in_hand = coalesce(cash_in_hand, 0) - new.amount,
+          cash_deposited_total = coalesce(cash_deposited_total, 0) + new.amount
+      where id = new.rider_id;
+  end if;
+
+  return new;
+end;
+$$ language plpgsql security definer;
+
+drop trigger if exists apply_rider_cash_ledger_trigger on rider_cash_ledger;
+create trigger apply_rider_cash_ledger_trigger
+  after insert on rider_cash_ledger
+  for each row execute procedure public.apply_rider_cash_ledger();
+
+-- Order delivery trigger: count deliveries and record COD collections
+create or replace function public.handle_order_delivered_cash()
+returns trigger as $$
+begin
+  if (tg_op = 'UPDATE') then
+    if (new.status = 'delivered' and (old.status is distinct from new.status)) then
+      if new.rider_id is not null then
+        update riders
+          set delivered_count = coalesce(delivered_count, 0) + 1
+          where id = new.rider_id;
+      end if;
+
+      if new.payment_method = 'cod' and new.rider_id is not null then
+        insert into rider_cash_ledger (rider_id, restaurant_id, order_id, type, amount)
+        values (new.rider_id, new.restaurant_id, new.id, 'collect', new.total_amount);
+      end if;
+    end if;
+  end if;
+
+  return new;
+end;
+$$ language plpgsql security definer;
+
+drop trigger if exists handle_order_delivered_cash_trigger on orders;
+create trigger handle_order_delivered_cash_trigger
+  after update on orders
+  for each row execute procedure public.handle_order_delivered_cash();
+
+-- Approve rider deposit request (creates ledger entry and marks approved)
+create or replace function public.approve_rider_deposit_request(request_id uuid)
+returns void as $$
+declare
+  req record;
+  owner_ok boolean;
+begin
+  select *
+  into req
+  from rider_cash_deposit_requests
+  where id = request_id
+  for update;
+
+  if req is null then
+    raise exception 'Request not found';
+  end if;
+
+  if req.status <> 'pending' then
+    raise exception 'Request already processed';
+  end if;
+
+  select exists(
+    select 1 from restaurants where id = req.restaurant_id and owner_id = auth.uid()
+  ) into owner_ok;
+
+  if not owner_ok then
+    raise exception 'Not authorized';
+  end if;
+
+  insert into rider_cash_ledger (rider_id, restaurant_id, order_id, type, amount, note)
+  values (req.rider_id, req.restaurant_id, null, 'deposit', req.amount, req.note);
+
+  update rider_cash_deposit_requests
+    set status = 'approved',
+        decided_at = timezone('utc'::text, now()),
+        decided_by = auth.uid()
+    where id = request_id;
+end;
+$$ language plpgsql security definer;
+
+-- Reject rider deposit request
+create or replace function public.reject_rider_deposit_request(request_id uuid)
+returns void as $$
+declare
+  req record;
+  owner_ok boolean;
+begin
+  select *
+  into req
+  from rider_cash_deposit_requests
+  where id = request_id
+  for update;
+
+  if req is null then
+    raise exception 'Request not found';
+  end if;
+
+  if req.status <> 'pending' then
+    raise exception 'Request already processed';
+  end if;
+
+  select exists(
+    select 1 from restaurants where id = req.restaurant_id and owner_id = auth.uid()
+  ) into owner_ok;
+
+  if not owner_ok then
+    raise exception 'Not authorized';
+  end if;
+
+  update rider_cash_deposit_requests
+    set status = 'rejected',
+        decided_at = timezone('utc'::text, now()),
+        decided_by = auth.uid()
+    where id = request_id;
+end;
+$$ language plpgsql security definer;

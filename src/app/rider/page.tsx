@@ -10,6 +10,7 @@ import { RiderStatusToggle } from "@/components/rider/status-toggle"
 import { RealtimeRiderOrders } from "@/components/rider/realtime-rider-orders"
 import { RiderReturnCard } from "@/components/rider/return-card"
 import { UserDropdown } from "@/components/user-dropdown"
+import { CashSummary } from "@/components/rider/cash-summary"
 
 export const dynamic = "force-dynamic"
 
@@ -157,6 +158,32 @@ export default async function RiderDashboardPage() {
 
     const showEmptyState = (!orders || orders.length === 0) && rider.status !== 'returning'
 
+    const { data: cashLedger } = await supabase
+        .from("rider_cash_ledger")
+        .select(`
+            id,
+            type,
+            amount,
+            created_at,
+            order:orders(order_number)
+        `)
+        .eq("rider_id", rider.id)
+        .order("created_at", { ascending: false })
+        .limit(20)
+
+    const { data: depositRequests } = await supabase
+        .from("rider_cash_deposit_requests")
+        .select(`
+            id,
+            amount,
+            status,
+            note,
+            requested_at
+        `)
+        .eq("rider_id", rider.id)
+        .order("created_at", { ascending: false })
+        .limit(20)
+
     return (
         <RealtimeRiderOrders riderId={rider.id}>
             <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
@@ -213,12 +240,20 @@ export default async function RiderDashboardPage() {
                         </div>
                     </div>
 
+                    {/* Cash Summary */}
+                    <CashSummary
+                        cashInHand={Number(rider.cash_in_hand || 0)}
+                        ledgerEntries={(cashLedger || []) as any}
+                        depositRequests={(depositRequests || []) as any}
+                    />
+
                     {/* Returning Card */}
                     {rider.status === 'returning' && activeOrderCount === 0 && (
                         <RiderReturnCard riderId={rider.id} restaurant={rider.restaurant} />
                     )}
 
                     {/* Active Deliveries Section */}
+                    {!(rider.status === 'returning' && activeOrderCount === 0) && (
                     <div>
                         <div className="flex items-center gap-3 mb-4">
                             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
@@ -397,6 +432,7 @@ export default async function RiderDashboardPage() {
                             </div>
                         ) : null}
                     </div>
+                    )}
                 </div>
             </div>
         </RealtimeRiderOrders>

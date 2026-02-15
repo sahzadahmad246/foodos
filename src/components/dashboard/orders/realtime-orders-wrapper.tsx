@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { OrdersList } from './orders-list'
 import { NewOrderModal } from './new-order-modal'
@@ -39,6 +39,7 @@ interface Order {
     rider?: {
         id: string
         name: string
+        phone?: string | null
     } | null
 }
 
@@ -52,6 +53,16 @@ export function RealtimeOrdersWrapper({ initialOrders, restaurantId }: RealtimeO
     const [newOrder, setNewOrder] = useState<Order | null>(null)
     const [showNewOrderModal, setShowNewOrderModal] = useState(false)
     const supabase = createClient()
+    const ordersRef = useRef<Order[]>(initialOrders)
+
+    useEffect(() => {
+        ordersRef.current = orders
+    }, [orders])
+
+    useEffect(() => {
+        setOrders(initialOrders)
+        ordersRef.current = initialOrders
+    }, [initialOrders])
 
     const handleNewOrder = useCallback((order: Order) => {
         setNewOrder(order)
@@ -117,10 +128,24 @@ export function RealtimeOrdersWrapper({ initialOrders, restaurantId }: RealtimeO
                     if (updatedOrder.rider_id) {
                         const { data: rider } = await supabase
                             .from('riders')
-                            .select('id, name')
+                            .select('id, name, phone')
                             .eq('id', updatedOrder.rider_id)
                             .single()
                         riderInfo = rider
+                    }
+                    const hasOrder = ordersRef.current.some((order) => order.id === updatedOrder.id)
+
+                    if (!hasOrder) {
+                        const { data: items } = await supabase
+                            .from('order_items')
+                            .select('*')
+                            .eq('order_id', updatedOrder.id)
+
+                        setOrders((prev) => [
+                            { ...updatedOrder, order_items: items || [], rider: riderInfo },
+                            ...prev
+                        ])
+                        return
                     }
 
                     setOrders((prev) =>

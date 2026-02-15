@@ -150,3 +150,97 @@ export async function assignRiderToOrder(orderId: string, riderId: string) {
     revalidatePath('/dashboard/orders')
     return { success: true }
 }
+
+export async function recordRiderCashDeposit(riderId: string, amount: number, note?: string) {
+    const supabase = await createClient()
+    const {
+        data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+        return { error: 'Unauthorized' }
+    }
+
+    if (!amount || amount <= 0) {
+        return { error: 'Invalid amount' }
+    }
+
+    const { data: restaurant } = await supabase
+        .from('restaurants')
+        .select('id')
+        .eq('owner_id', user.id)
+        .single()
+
+    if (!restaurant) {
+        return { error: 'Restaurant not found' }
+    }
+
+    const { data: rider, error: riderError } = await supabase
+        .from('riders')
+        .select('id, restaurant_id, cash_in_hand')
+        .eq('id', riderId)
+        .single()
+
+    if (riderError || !rider) {
+        return { error: 'Rider not found' }
+    }
+
+    if (rider.restaurant_id !== restaurant.id) {
+        return { error: 'Rider does not belong to your restaurant' }
+    }
+
+    const cashInHand = Number(rider.cash_in_hand || 0)
+    if (amount > cashInHand) {
+        return { error: 'Deposit exceeds cash in hand' }
+    }
+
+    const { error } = await supabase
+        .from('rider_cash_ledger')
+        .insert({
+            rider_id: riderId,
+            restaurant_id: restaurant.id,
+            type: 'deposit',
+            amount,
+            note: note || null
+        })
+
+    if (error) {
+        console.error('Error recording deposit:', error)
+        return { error: 'Failed to record deposit' }
+    }
+
+    revalidatePath('/dashboard/riders')
+    return { success: true }
+}
+
+export async function approveDepositRequest(requestId: string) {
+    const supabase = await createClient()
+
+    const { error } = await supabase.rpc('approve_rider_deposit_request', {
+        request_id: requestId
+    })
+
+    if (error) {
+        console.error('Error approving deposit request:', error)
+        return { error: 'Failed to approve request' }
+    }
+
+    revalidatePath('/dashboard/riders')
+    return { success: true }
+}
+
+export async function rejectDepositRequest(requestId: string) {
+    const supabase = await createClient()
+
+    const { error } = await supabase.rpc('reject_rider_deposit_request', {
+        request_id: requestId
+    })
+
+    if (error) {
+        console.error('Error rejecting deposit request:', error)
+        return { error: 'Failed to reject request' }
+    }
+
+    revalidatePath('/dashboard/riders')
+    return { success: true }
+}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import { Switch } from '@/components/ui/switch'
 import { arrivedAtRestaurant, toggleRiderStatus } from '@/app/rider/actions'
 import { toast } from 'sonner'
@@ -12,11 +12,15 @@ interface RiderStatusToggleProps {
 
 export function RiderStatusToggle({ riderId, currentStatus }: RiderStatusToggleProps) {
     const [isPending, startTransition] = useTransition()
-    const [isOnline, setIsOnline] = useState(currentStatus === 'online')
+    const [isOnline, setIsOnline] = useState(currentStatus !== 'offline')
+
+    useEffect(() => {
+        setIsOnline(currentStatus !== 'offline')
+    }, [currentStatus])
 
     const handleToggle = (checked: boolean) => {
-        if (currentStatus === 'on_delivery') {
-            toast.error('Cannot go offline while on delivery')
+        if (currentStatus === 'on_delivery' || currentStatus === 'returning') {
+            toast.error('Cannot go offline right now')
             return
         }
 
@@ -76,7 +80,7 @@ export function RiderStatusToggle({ riderId, currentStatus }: RiderStatusToggleP
             <Switch
                 checked={isOnline}
                 onCheckedChange={handleToggle}
-                disabled={isPending || currentStatus === 'on_delivery'}
+                disabled={isPending || currentStatus === 'on_delivery' || currentStatus === 'returning'}
             />
             <span className={`text-sm font-medium ${isOnline ? 'text-green-600' : 'text-muted-foreground'}`}>
                 {isPending ? 'Updating...' : isOnline ? 'Online' : 'Offline'}

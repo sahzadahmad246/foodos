@@ -15,14 +15,20 @@ interface Rider {
     vehicle_number: string
     status: 'online' | 'offline' | 'on_delivery'
     is_active: boolean
+    cash_in_hand?: number | null
+    cash_collected_total?: number | null
+    cash_deposited_total?: number | null
+    delivered_count?: number | null
 }
 
 interface RidersListProps {
     riders: Rider[]
     restaurantId: string
+    ledgerByRider: Record<string, any[]>
+    requestsByRider: Record<string, any[]>
 }
 
-export function RidersList({ riders, restaurantId }: RidersListProps) {
+export function RidersList({ riders, restaurantId, ledgerByRider, requestsByRider }: RidersListProps) {
     const [showAddModal, setShowAddModal] = useState(false)
 
     const onlineCount = riders.filter(r => r.status === 'online' && r.is_active).length
@@ -60,7 +66,12 @@ export function RidersList({ riders, restaurantId }: RidersListProps) {
             ) : (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {riders.map((rider) => (
-                        <RiderCard key={rider.id} rider={rider} />
+                        <RiderCard
+                            key={rider.id}
+                            rider={rider}
+                            ledgerEntries={ledgerByRider[rider.id] || []}
+                            depositRequests={requestsByRider[rider.id] || []}
+                        />
                     ))}
                 </div>
             )}
