@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { NewOrderModal } from './new-order-modal'
 import { toast } from 'sonner'
+import { acceptOrder } from '../actions/order-actions'
+import { printThermalBill, printThermalKot, type BillRestaurantInfo } from './thermal-bill'
 
 interface OrderItem {
     id: string
@@ -18,17 +20,27 @@ interface NewOrder {
     customer_name: string
     customer_phone: string | null
     customer_address: string | null
+    items_total?: number
+    delivery_fee?: number
+    tax_amount?: number
     total_amount: number
     payment_method: string
+    payment_status?: string
     created_at: string
     order_items?: OrderItem[]
 }
 
 interface GlobalNewOrderListenerProps {
     restaurantId: string
+    restaurantInfo: BillRestaurantInfo
+    autoAcceptOrders: boolean
 }
 
-export function GlobalNewOrderListener({ restaurantId }: GlobalNewOrderListenerProps) {
+export function GlobalNewOrderListener({
+    restaurantId,
+    restaurantInfo,
+    autoAcceptOrders,
+}: GlobalNewOrderListenerProps) {
     const supabase = createClient()
     const [newOrder, setNewOrder] = useState<NewOrder | null>(null)
     const [showNewOrderModal, setShowNewOrderModal] = useState(false)
@@ -100,11 +112,45 @@ export function GlobalNewOrderListener({ restaurantId }: GlobalNewOrderListenerP
                         .select('id, name, price, quantity')
                         .eq('order_id', incomingOrder.id)
 
-                    setNewOrder({
+                    const orderWithItems = {
                         ...incomingOrder,
                         order_items: items || [],
-                    })
-                    setShowNewOrderModal(true)
+                    }
+
+                    if (autoAcceptOrders) {
+                        const result = await acceptOrder(orderWithItems.id)
+                        if (result.error) {
+                            toast.error(`Auto-accept failed for ${orderWithItems.order_number}`)
+                        } else {
+                            const printed = printThermalBill(restaurantInfo, {
+                                ...orderWithItems,
+                                items_total: Number((orderWithItems as any).items_total || orderWithItems.total_amount || 0),
+                                delivery_fee: Number((orderWithItems as any).delivery_fee || 0),
+                                tax_amount: Number((orderWithItems as any).tax_amount || 0),
+                                payment_status: (orderWithItems as any).payment_status || 'pending',
+                            })
+                            const kotPrinted = printThermalKot(restaurantInfo, {
+                                ...orderWithItems,
+                                items_total: Number((orderWithItems as any).items_total || orderWithItems.total_amount || 0),
+                                delivery_fee: Number((orderWithItems as any).delivery_fee || 0),
+                                tax_amount: Number((orderWithItems as any).tax_amount || 0),
+                                payment_status: (orderWithItems as any).payment_status || 'pending',
+                            })
+                            if (!printed) {
+                                toast.warning('Auto-accepted. Please enable popups to print or save as PDF.')
+                            }
+                            if (!kotPrinted) {
+                                toast.warning('Auto-accepted. Please enable popups to print KOT.')
+                            }
+                            if (printed || kotPrinted) {
+                                toast.success(`Auto-accepted ${orderWithItems.order_number} and opened bill print.`)
+                            }
+                        }
+                    } else {
+                        setNewOrder(orderWithItems)
+                        setShowNewOrderModal(true)
+                    }
+
                     void fetchPendingCount()
                 }
             )
@@ -137,7 +183,7 @@ export function GlobalNewOrderListener({ restaurantId }: GlobalNewOrderListenerP
         return () => {
             supabase.removeChannel(channel)
         }
-    }, [restaurantId, supabase, fetchPendingCount])
+    }, [restaurantId, supabase, fetchPendingCount, autoAcceptOrders, restaurantInfo])
 
     useEffect(() => {
         if (pendingCount <= 0) {
@@ -174,6 +220,7 @@ export function GlobalNewOrderListener({ restaurantId }: GlobalNewOrderListenerP
             order={newOrder}
             open={showNewOrderModal}
             onClose={handleCloseModal}
+            restaurantInfo={restaurantInfo}
         />
     )
 }

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { OrdersList } from './orders-list'
+import type { BillRestaurantInfo } from './thermal-bill'
 
 interface OrderItem {
     id: string
@@ -45,9 +46,14 @@ interface Order {
 interface RealtimeOrdersWrapperProps {
     initialOrders: Order[]
     restaurantId: string
+    restaurantInfo: BillRestaurantInfo
 }
 
-export function RealtimeOrdersWrapper({ initialOrders, restaurantId }: RealtimeOrdersWrapperProps) {
+export function RealtimeOrdersWrapper({
+    initialOrders,
+    restaurantId,
+    restaurantInfo,
+}: RealtimeOrdersWrapperProps) {
     const [orders, setOrders] = useState<Order[]>(initialOrders)
     const supabase = createClient()
     const ordersRef = useRef<Order[]>(initialOrders)
@@ -93,6 +99,7 @@ export function RealtimeOrdersWrapper({ initialOrders, restaurantId }: RealtimeO
 
                     // Add to orders list
                     setOrders((prev) => [orderWithItems, ...prev])
+
                 }
             )
             .on(
@@ -152,6 +159,6 @@ export function RealtimeOrdersWrapper({ initialOrders, restaurantId }: RealtimeO
     }, [restaurantId, supabase])
 
     return (
-        <OrdersList orders={orders} />
+        <OrdersList orders={orders} restaurantInfo={restaurantInfo} />
     )
 }

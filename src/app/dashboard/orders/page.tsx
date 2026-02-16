@@ -15,7 +15,18 @@ export default async function OrdersPage() {
 
     const { data: restaurant } = await supabase
         .from("restaurants")
-        .select("id")
+        .select(`
+            id,
+            name,
+            logo_url,
+            phone,
+            address_line1,
+            address_line2,
+            city,
+            state,
+            pincode,
+            restaurant_settings(gst_number, auto_accept_orders)
+        `)
         .eq("owner_id", user.id)
         .single()
 
@@ -88,6 +99,20 @@ export default async function OrdersPage() {
             <RealtimeOrdersWrapper
                 initialOrders={orders || []}
                 restaurantId={restaurant.id}
+                restaurantInfo={{
+                    id: restaurant.id,
+                    name: restaurant.name,
+                    logo_url: restaurant.logo_url,
+                    phone: restaurant.phone,
+                    address_line1: restaurant.address_line1,
+                    address_line2: restaurant.address_line2,
+                    city: restaurant.city,
+                    state: restaurant.state,
+                    pincode: restaurant.pincode,
+                    gst_number: Array.isArray(restaurant.restaurant_settings)
+                        ? restaurant.restaurant_settings[0]?.gst_number
+                        : (restaurant.restaurant_settings as any)?.gst_number,
+                }}
             />
         </div>
     )

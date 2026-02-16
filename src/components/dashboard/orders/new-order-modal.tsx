@@ -11,6 +11,7 @@ import {
 import { acceptOrder, rejectOrder } from '../actions/order-actions'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
+import { printThermalBill, printThermalKot, type BillRestaurantInfo } from './thermal-bill'
 
 interface OrderItem {
     id: string
@@ -25,8 +26,12 @@ interface NewOrder {
     customer_name: string
     customer_phone: string | null
     customer_address: string | null
+    items_total?: number
+    delivery_fee?: number
+    tax_amount?: number
     total_amount: number
     payment_method: string
+    payment_status?: string
     created_at: string
     order_items?: OrderItem[]
 }
@@ -35,9 +40,10 @@ interface NewOrderModalProps {
     order: NewOrder | null
     open: boolean
     onClose: () => void
+    restaurantInfo: BillRestaurantInfo
 }
 
-export function NewOrderModal({ order, open, onClose }: NewOrderModalProps) {
+export function NewOrderModal({ order, open, onClose, restaurantInfo }: NewOrderModalProps) {
     const router = useRouter()
     const audioRef = useRef<HTMLAudioElement | null>(null)
     const [isAccepting, setIsAccepting] = useState(false)
@@ -85,6 +91,26 @@ export function NewOrderModal({ order, open, onClose }: NewOrderModalProps) {
         if (result.error) {
             toast.error(result.error)
         } else {
+            const printed = printThermalBill(restaurantInfo, {
+                ...order,
+                items_total: Number((order as any).items_total || order.total_amount || 0),
+                delivery_fee: Number((order as any).delivery_fee || 0),
+                tax_amount: Number((order as any).tax_amount || 0),
+                payment_status: (order as any).payment_status || 'pending',
+            })
+            const kotPrinted = printThermalKot(restaurantInfo, {
+                ...order,
+                items_total: Number((order as any).items_total || order.total_amount || 0),
+                delivery_fee: Number((order as any).delivery_fee || 0),
+                tax_amount: Number((order as any).tax_amount || 0),
+                payment_status: (order as any).payment_status || 'pending',
+            })
+            if (!printed) {
+                toast.warning('Order accepted. Please enable popups to print or save as PDF.')
+            }
+            if (!kotPrinted) {
+                toast.warning('Order accepted. Please enable popups to print KOT.')
+            }
             toast.success('Order accepted!')
             onClose()
             router.refresh()

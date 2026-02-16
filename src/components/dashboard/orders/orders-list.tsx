@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { OrderCard } from './order-card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
+import type { BillRestaurantInfo } from './thermal-bill'
 
 interface OrderItem {
     id: string
@@ -47,6 +48,7 @@ interface Order {
 
 interface OrdersListProps {
     orders: Order[]
+    restaurantInfo: BillRestaurantInfo
 }
 
 const TAB_CONFIG = [
@@ -58,7 +60,7 @@ const TAB_CONFIG = [
     { value: 'archive', label: 'Archive', icon: Archive, color: 'text-muted-foreground' },
 ]
 
-export function OrdersList({ orders }: OrdersListProps) {
+export function OrdersList({ orders, restaurantInfo }: OrdersListProps) {
     const [searchQuery, setSearchQuery] = useState('')
     const [activeTab, setActiveTab] = useState('pending')
 
@@ -174,7 +176,7 @@ export function OrdersList({ orders }: OrdersListProps) {
                         ) : (
                             <div className="grid gap-4 lg:grid-cols-2">
                                 {filteredOrders.map((order) => (
-                                    <OrderCard key={order.id} order={order} />
+                                    <OrderCard key={order.id} order={order} restaurantInfo={restaurantInfo} />
                                 ))}
                             </div>
                         )}

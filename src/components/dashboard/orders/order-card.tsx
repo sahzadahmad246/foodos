@@ -20,6 +20,7 @@ import { acceptOrder, rejectOrder, markOrderReady, cancelOrder, verifyReturnOtp,
 import { AssignRiderModal } from './assign-rider-dropdown'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
+import { printThermalBill, printThermalKot, type BillRestaurantInfo } from './thermal-bill'
 
 interface OrderItem {
     id: string
@@ -66,6 +67,7 @@ interface Order {
 
 interface OrderCardProps {
     order: Order
+    restaurantInfo: BillRestaurantInfo
 }
 
 const STATUS_CONFIG: Record<string, { label: string; pill: string; accent: string }> = {
@@ -91,7 +93,7 @@ const CANCELLATION_REASONS = [
 
 type LoadingAction = 'accept' | 'reject' | 'ready' | 'assign' | 'cancel' | 'returnVerify' | 'returnCollect' | null
 
-export function OrderCard({ order }: OrderCardProps) {
+export function OrderCard({ order, restaurantInfo }: OrderCardProps) {
     const router = useRouter()
     const [loadingAction, setLoadingAction] = useState<LoadingAction>(null)
     const [showRejectDialog, setShowRejectDialog] = useState(false)
@@ -136,8 +138,36 @@ export function OrderCard({ order }: OrderCardProps) {
         if (result.error) {
             toast.error(result.error)
         } else {
+            const printed = printThermalBill(restaurantInfo, {
+                ...order,
+                status: 'preparing',
+            })
+            const kotPrinted = printThermalKot(restaurantInfo, {
+                ...order,
+                status: 'preparing',
+            })
+            if (!printed) {
+                toast.warning('Order accepted. Please enable popups to print or save as PDF.')
+            }
+            if (!kotPrinted) {
+                toast.warning('Order accepted. Please enable popups to print KOT.')
+            }
             toast.success('Order accepted! Start preparing.')
             router.refresh()
+        }
+    }
+
+    const handlePrintBill = () => {
+        const printed = printThermalBill(restaurantInfo, order)
+        if (!printed) {
+            toast.warning('Please enable popups to print or save as PDF.')
+        }
+    }
+
+    const handlePrintKot = () => {
+        const printed = printThermalKot(restaurantInfo, order)
+        if (!printed) {
+            toast.warning('Please enable popups to print KOT.')
         }
     }
 
@@ -544,6 +574,24 @@ export function OrderCard({ order }: OrderCardProps) {
 
                     {/* Action Buttons */}
                     <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                        <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
+                            <Button
+                                variant="outline"
+                                onClick={handlePrintBill}
+                                disabled={isLoading}
+                                className="w-full sm:w-auto"
+                            >
+                                Print Bill
+                            </Button>
+                            <Button
+                                variant="outline"
+                                onClick={handlePrintKot}
+                                disabled={isLoading}
+                                className="w-full sm:w-auto"
+                            >
+                                Print KOT
+                            </Button>
+                        </div>
                         {order.status === 'pending' && (
                             <>
                                 <Button
