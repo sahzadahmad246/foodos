@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -40,23 +40,22 @@ interface NewOrderModalProps {
 export function NewOrderModal({ order, open, onClose }: NewOrderModalProps) {
     const router = useRouter()
     const audioRef = useRef<HTMLAudioElement | null>(null)
-    const [isAccepting, setIsAccepting] = React.useState(false)
-    const [isRejecting, setIsRejecting] = React.useState(false)
+    const [isAccepting, setIsAccepting] = useState(false)
+    const [isRejecting, setIsRejecting] = useState(false)
 
     // Play notification sound when modal opens
     useEffect(() => {
         if (open && order) {
-            // Create and play sound
             if (!audioRef.current) {
-                audioRef.current = new Audio('/sounds/new-order.mp3')
+                audioRef.current = new Audio('/alert.mp3')
                 audioRef.current.loop = true
+                audioRef.current.preload = 'auto'
             }
-            audioRef.current.play().catch(() => {
-                // Autoplay might be blocked
-                console.log('Audio autoplay blocked')
+
+            void audioRef.current.play().catch(() => {
+                // Browser may block autoplay until first user interaction.
             })
         } else {
-            // Stop sound when modal closes
             if (audioRef.current) {
                 audioRef.current.pause()
                 audioRef.current.currentTime = 0
@@ -69,6 +68,15 @@ export function NewOrderModal({ order, open, onClose }: NewOrderModalProps) {
             }
         }
     }, [open, order])
+
+    useEffect(() => {
+        return () => {
+            if (audioRef.current) {
+                audioRef.current.pause()
+                audioRef.current = null
+            }
+        }
+    }, [])
 
     const handleAccept = async () => {
         if (!order) return

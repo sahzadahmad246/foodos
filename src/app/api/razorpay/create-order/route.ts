@@ -17,6 +17,19 @@ export async function POST(request: NextRequest) {
             )
         }
 
+        const { data: restaurant } = await supabase
+            .from('restaurants')
+            .select('is_online')
+            .eq('id', restaurantId)
+            .single()
+
+        if (!restaurant || restaurant.is_online === false) {
+            return NextResponse.json(
+                { error: 'Restaurant is not accepting orders currently' },
+                { status: 400 }
+            )
+        }
+
         // Get restaurant's Razorpay keys
         const { data: settings, error: settingsError } = await supabase
             .from('restaurant_settings')

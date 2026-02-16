@@ -18,6 +18,7 @@ interface Restaurant {
     id: string
     name: string
     slug: string
+    is_online?: boolean | null
 }
 
 interface CartDrawerProps {
@@ -148,12 +149,25 @@ export function CartDrawer({ open, onClose, restaurant }: CartDrawerProps) {
                                 </div>
                             </div>
 
+                            {restaurant.is_online === false && (
+                                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                                    Restaurant is not accepting orders currently.
+                                </p>
+                            )}
+
                             <Button
                                 asChild
                                 className="w-full"
                                 size="lg"
+                                disabled={restaurant.is_online === false}
                             >
-                                <Link href={`/r/${restaurant.slug}/checkout`}>
+                                <Link
+                                    href={restaurant.is_online === false ? '#' : `/r/${restaurant.slug}/checkout`}
+                                    aria-disabled={restaurant.is_online === false}
+                                    onClick={(e) => {
+                                        if (restaurant.is_online === false) e.preventDefault()
+                                    }}
+                                >
                                     Proceed to Checkout
                                 </Link>
                             </Button>

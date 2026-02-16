@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { DashboardSidebar } from '@/components/dashboard/sidebar'
 import { DashboardHeader } from '@/components/dashboard/header'
+import { GlobalNewOrderListener } from '@/components/dashboard/orders/global-new-order-listener'
 import { canGoOnline } from '@/lib/profile-completion'
 
 export default async function DashboardLayout({
@@ -39,6 +40,7 @@ export default async function DashboardLayout({
                     restaurant={restaurant}
                     profileComplete={canGoOnlineStatus}
                 />
+                <GlobalNewOrderListener restaurantId={restaurant.id} />
                 <main className="flex-1 overflow-x-hidden p-4 md:p-6">
                     {children}
                 </main>

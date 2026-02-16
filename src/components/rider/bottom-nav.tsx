@@ -18,6 +18,11 @@ function isActive(pathname: string, href: string) {
 
 export function RiderBottomNav() {
     const pathname = usePathname()
+    const showOnRoutes = new Set(['/rider', '/rider/cash', '/rider/orders'])
+
+    if (!showOnRoutes.has(pathname)) {
+        return null
+    }
 
     return (
         <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-border/60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">

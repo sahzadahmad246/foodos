@@ -21,7 +21,7 @@ export default async function CheckoutPage({ params }: PageProps) {
     }
 
     // Fetch restaurant by slug with settings
-    const { data: restaurant, error } = await supabase
+    const { data: restaurant } = await supabase
         .from("restaurants")
         .select(`
             *,
@@ -31,10 +31,6 @@ export default async function CheckoutPage({ params }: PageProps) {
         .single()
 
     // Debug logging
-    console.log('Checkout - Restaurant:', restaurant?.name)
-    console.log('Checkout - Settings:', restaurant?.restaurant_settings)
-    console.log('Checkout - Error:', error)
-
     if (!restaurant) {
         notFound()
     }
@@ -49,6 +45,21 @@ export default async function CheckoutPage({ params }: PageProps) {
             .order("is_default", { ascending: false })
             .order("created_at", { ascending: false })
         addresses = data || []
+    }
+
+    if (!restaurant.is_online) {
+        return (
+            <div className="min-h-screen bg-background">
+                <div className="max-w-xl mx-auto px-4 py-16">
+                    <div className="rounded-xl border border-amber-300 bg-amber-50 p-6 text-center">
+                        <h1 className="text-xl font-semibold text-amber-900">Restaurant is not accepting orders</h1>
+                        <p className="mt-2 text-sm text-amber-800">
+                            This restaurant is currently offline. Please try again later.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        )
     }
 
     return (

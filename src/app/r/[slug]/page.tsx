@@ -20,7 +20,6 @@ export default async function RestaurantPage({ params }: PageProps) {
         .from("restaurants")
         .select("*")
         .eq("slug", slug)
-        .eq("is_online", true)
         .single()
 
     if (!restaurant) {

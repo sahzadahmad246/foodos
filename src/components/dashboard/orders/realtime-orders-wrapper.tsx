@@ -1,9 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { OrdersList } from './orders-list'
-import { NewOrderModal } from './new-order-modal'
 
 interface OrderItem {
     id: string
@@ -50,8 +49,6 @@ interface RealtimeOrdersWrapperProps {
 
 export function RealtimeOrdersWrapper({ initialOrders, restaurantId }: RealtimeOrdersWrapperProps) {
     const [orders, setOrders] = useState<Order[]>(initialOrders)
-    const [newOrder, setNewOrder] = useState<Order | null>(null)
-    const [showNewOrderModal, setShowNewOrderModal] = useState(false)
     const supabase = createClient()
     const ordersRef = useRef<Order[]>(initialOrders)
 
@@ -63,16 +60,6 @@ export function RealtimeOrdersWrapper({ initialOrders, restaurantId }: RealtimeO
         setOrders(initialOrders)
         ordersRef.current = initialOrders
     }, [initialOrders])
-
-    const handleNewOrder = useCallback((order: Order) => {
-        setNewOrder(order)
-        setShowNewOrderModal(true)
-    }, [])
-
-    const handleCloseModal = useCallback(() => {
-        setShowNewOrderModal(false)
-        setNewOrder(null)
-    }, [])
 
     useEffect(() => {
         if (!restaurantId) return
@@ -106,9 +93,6 @@ export function RealtimeOrdersWrapper({ initialOrders, restaurantId }: RealtimeO
 
                     // Add to orders list
                     setOrders((prev) => [orderWithItems, ...prev])
-
-                    // Show modal
-                    handleNewOrder(orderWithItems)
                 }
             )
             .on(
@@ -165,16 +149,9 @@ export function RealtimeOrdersWrapper({ initialOrders, restaurantId }: RealtimeO
             console.log('Cleaning up realtime subscription')
             supabase.removeChannel(channel)
         }
-    }, [restaurantId, supabase, handleNewOrder])
+    }, [restaurantId, supabase])
 
     return (
-        <>
-            <OrdersList orders={orders} />
-            <NewOrderModal
-                order={newOrder}
-                open={showNewOrderModal}
-                onClose={handleCloseModal}
-            />
-        </>
+        <OrdersList orders={orders} />
     )
 }

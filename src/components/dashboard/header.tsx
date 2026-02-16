@@ -19,6 +19,7 @@ interface HeaderProps {
         slug: string
         logo_url: string | null
         is_active: boolean
+        is_online: boolean
     }
     profileComplete: boolean
 }
@@ -83,7 +84,7 @@ export function DashboardHeader({ user, restaurant, profileComplete }: HeaderPro
                 </Button>
                 <OnlineToggle
                     restaurantId={restaurant.id}
-                    isActive={restaurant.is_active}
+                    isOnline={restaurant.is_online}
                     profileComplete={profileComplete}
                 />
                 <UserDropdown

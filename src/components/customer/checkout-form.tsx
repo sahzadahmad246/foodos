@@ -38,6 +38,7 @@ interface Restaurant {
     id: string
     name: string
     slug: string
+    is_online?: boolean | null
     logo_url?: string | null
     latitude?: number | null
     longitude?: number | null
@@ -85,6 +86,7 @@ export function CheckoutForm({ restaurant, userId, savedAddresses }: CheckoutFor
 
     const codEnabled = settings?.cod_enabled !== false
     const onlineEnabled = settings?.online_payment_enabled === true && !!settings?.razorpay_key_id
+    const isRestaurantOffline = restaurant.is_online === false
 
     // Auto-select address
     useEffect(() => {
@@ -162,6 +164,11 @@ export function CheckoutForm({ restaurant, userId, savedAddresses }: CheckoutFor
     }), [restaurant.id, selectedAddress, orderType, items, subtotal, deliveryFee, taxAmount, total, paymentMethod, notes])
 
     const handleRazorpayPayment = async () => {
+        if (isRestaurantOffline) {
+            toast.error('Restaurant is not accepting orders currently')
+            return
+        }
+
         if (!settings?.razorpay_key_id) {
             toast.error('Online payment not configured')
             return
@@ -241,6 +248,11 @@ export function CheckoutForm({ restaurant, userId, savedAddresses }: CheckoutFor
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
+
+        if (isRestaurantOffline) {
+            toast.error('Restaurant is not accepting orders currently')
+            return
+        }
 
         if (orderType === 'delivery' && !selectedAddress) {
             toast.error('Please select a delivery address')
@@ -326,6 +338,12 @@ export function CheckoutForm({ restaurant, userId, savedAddresses }: CheckoutFor
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6 pb-32 lg:pb-8">
+                {isRestaurantOffline && (
+                    <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                        Restaurant is not accepting orders currently.
+                    </div>
+                )}
+
                 {/* Order Type */}
                 <div className="grid grid-cols-2 gap-3">
                     <button
@@ -563,14 +581,21 @@ export function CheckoutForm({ restaurant, userId, savedAddresses }: CheckoutFor
                         type="submit"
                         className="w-full h-12 text-base font-semibold"
                         size="lg"
-                        disabled={isLoading || (orderType === 'delivery' && !selectedAddress)}
+                        disabled={isRestaurantOffline || isLoading || (orderType === 'delivery' && !selectedAddress)}
                     >
                         {isLoading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
                         {isLoading
                             ? isProcessingPayment ? 'Processing...' : 'Placing Order...'
-                            : `${paymentMethod === 'online' ? 'Pay' : 'Place Order'} · ₹${total.toFixed(0)}`
+                            : isRestaurantOffline
+                                ? 'Restaurant Offline'
+                                : `${paymentMethod === 'online' ? 'Pay' : 'Place Order'} · ₹${total.toFixed(0)}`
                         }
                     </Button>
+                    {isRestaurantOffline && (
+                        <p className="mt-2 text-center text-xs text-amber-700">
+                            Orders are temporarily disabled for both COD and online payment.
+                        </p>
+                    )}
                 </div>
             </form>
 

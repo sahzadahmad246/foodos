@@ -71,16 +71,35 @@ export async function deliverOrder(
 ) {
     const supabase = await createClient()
 
-    // Get order to check customer location
+    // Get order to check status and customer location
     const { data: order } = await supabase
         .from('orders')
-        .select('customer_latitude, customer_longitude')
+        .select('status, rider_id, customer_latitude, customer_longitude')
         .eq('id', orderId)
         .eq('rider_id', riderId)
         .single()
 
     if (!order) {
         return { error: 'Order not found' }
+    }
+
+    if (order.status !== 'out_for_delivery') {
+        return { error: 'Pick up the order before marking it delivered' }
+    }
+
+    // Enforce batch flow: rider must pick up all assigned active orders first.
+    const assignedRiderId = order.rider_id || riderId
+
+    const { count: unpickedAssignedCount } = await supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('rider_id', assignedRiderId)
+        .in('status', ['pending', 'confirmed', 'preparing', 'ready'])
+        .is('picked_up_at', null)
+        .neq('id', orderId)
+
+    if (unpickedAssignedCount && unpickedAssignedCount > 0) {
+        return { error: 'Pick up all assigned orders first, then mark deliveries' }
     }
 
     // If customer has location and rider provided location, check proximity

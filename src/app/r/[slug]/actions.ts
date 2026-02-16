@@ -45,6 +45,16 @@ export async function createOrder(data: CreateOrderData) {
             return { error: 'Cart is empty' }
         }
 
+        const { data: restaurant } = await supabase
+            .from('restaurants')
+            .select('is_online')
+            .eq('id', data.restaurantId)
+            .single()
+
+        if (!restaurant || restaurant.is_online === false) {
+            return { error: 'Restaurant is not accepting orders currently' }
+        }
+
         // Generate order number
         const orderNumber = `ORD-${Date.now().toString().slice(-8)}`
 

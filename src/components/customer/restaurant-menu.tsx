@@ -16,6 +16,7 @@ interface Restaurant {
     id: string
     name: string
     slug: string
+    is_online?: boolean | null
     description?: string
     logo_url?: string | null
     image_url?: string
@@ -83,6 +84,14 @@ export function RestaurantMenu({ restaurant, categories, menuItems, user }: Rest
 
             {/* Customer Header */}
             <CustomerHeader restaurant={restaurant} user={user} />
+
+            {restaurant.is_online === false && (
+                <div className="bg-amber-50 border-b border-amber-200">
+                    <div className="container max-w-7xl mx-auto px-4 py-2 text-sm text-amber-800">
+                        This restaurant is currently offline. You can browse the menu, but orders are temporarily disabled.
+                    </div>
+                </div>
+            )}
 
             {/* Search Bar */}
             <div className="border-b bg-background sticky top-16 z-30">
