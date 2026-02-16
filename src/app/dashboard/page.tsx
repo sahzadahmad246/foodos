@@ -16,7 +16,10 @@ export default async function DashboardPage() {
 
     if (!restaurant) return null
 
-    const settings = restaurant.restaurant_settings?.[0] || null
+    const settingsRelation = (restaurant as any).restaurant_settings
+    const settings = Array.isArray(settingsRelation)
+        ? (settingsRelation[0] ?? null)
+        : (settingsRelation ?? null)
     const { percentage, missing } = calculateProfileCompletion(restaurant, settings)
 
     const stats = [
