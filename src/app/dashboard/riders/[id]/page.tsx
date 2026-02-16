@@ -51,7 +51,8 @@ function getStatusBadge(status: string, isActive: boolean) {
     const base = 'text-white'
     if (!isActive) return <Badge className={`${base} bg-gray-500`}>Inactive</Badge>
     if (status === 'online') return <Badge className={`${base} bg-green-600`}>Online</Badge>
-    if (status === 'on_delivery') return <Badge className={`${base} bg-blue-600`}>On Delivery</Badge>
+    if (status === 'on_delivery') return <Badge className={`${base} bg-blue-600`}>Pickup Phase</Badge>
+    if (status === 'delivering') return <Badge className={`${base} bg-indigo-600`}>Delivering</Badge>
     if (status === 'returning') return <Badge className={`${base} bg-amber-600`}>Returning</Badge>
     return <Badge className={`${base} bg-gray-500`}>Offline</Badge>
 }

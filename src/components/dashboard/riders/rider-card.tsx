@@ -42,7 +42,7 @@ interface Rider {
     phone: string
     vehicle_type: string
     vehicle_number: string
-    status: 'online' | 'offline' | 'on_delivery'
+    status: 'online' | 'offline' | 'on_delivery' | 'delivering' | 'returning'
     is_active: boolean
     cash_in_hand?: number | null
     cash_collected_total?: number | null
@@ -82,7 +82,8 @@ export function RiderCard({ rider, ledgerEntries, depositRequests }: RiderCardPr
     const statusConfig = {
         online: { label: 'Online', color: 'bg-green-500' },
         offline: { label: 'Offline', color: 'bg-gray-400' },
-        on_delivery: { label: 'On Delivery', color: 'bg-blue-500' },
+        on_delivery: { label: 'Pickup Phase', color: 'bg-blue-500' },
+        delivering: { label: 'Delivering', color: 'bg-indigo-500' },
         returning: { label: 'Returning', color: 'bg-amber-500' }
     } as const
 

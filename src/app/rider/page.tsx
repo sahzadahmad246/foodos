@@ -7,7 +7,6 @@ import {
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { RiderStatusToggle } from "@/components/rider/status-toggle"
-import { RealtimeRiderOrders } from "@/components/rider/realtime-rider-orders"
 import { RiderReturnCard } from "@/components/rider/return-card"
 import { UserDropdown } from "@/components/user-dropdown"
 
@@ -97,11 +96,38 @@ export default async function RiderDashboardPage() {
         .is("return_verified_at", null)
         .order("created_at", { ascending: false })
 
-    // Combine orders - cancelled orders first (more urgent)
-    const orders = [...(cancelledOrders || []), ...(activeOrders || [])]
+    const pickupOrders = (activeOrders || []).filter((order) => order.status === 'ready' || order.status === 'preparing')
+    const onTheWayOrders = (activeOrders || []).filter((order) => order.status === 'out_for_delivery')
+
+    // Display order priority:
+    // 1) Cancelled return-required orders
+    // 2) Ready/Preparing pickup queue
+    // 3) Picked-up / on-the-way deliveries
+    const orders = [...(cancelledOrders || []), ...pickupOrders, ...onTheWayOrders]
 
     const activeOrderCount = activeOrders?.length || 0
     const returnOrderCount = cancelledOrders?.length || 0
+
+    // Reconcile rider status with real order state to avoid stale phase labels.
+    const hasOutForDelivery = (activeOrders || []).some((o) => o.status === 'out_for_delivery')
+    const hasPendingPickup = (activeOrders || []).some((o) => o.status === 'preparing' || o.status === 'ready')
+    let effectiveRiderStatus = rider.status
+
+    if (hasOutForDelivery && rider.status !== 'delivering') {
+        effectiveRiderStatus = 'delivering'
+    } else if (!hasOutForDelivery && hasPendingPickup && rider.status === 'delivering') {
+        effectiveRiderStatus = 'on_delivery'
+    } else if (!hasOutForDelivery && !hasPendingPickup && (rider.status === 'on_delivery' || rider.status === 'delivering')) {
+        effectiveRiderStatus = 'returning'
+    }
+
+    if (effectiveRiderStatus !== rider.status) {
+        await supabase
+            .from('riders')
+            .update({ status: effectiveRiderStatus })
+            .eq('id', rider.id)
+        rider.status = effectiveRiderStatus
+    }
 
     const getStatusConfig = (status: string) => {
         switch (status) {
@@ -121,7 +147,16 @@ export default async function RiderDashboardPage() {
                     borderColor: 'border-blue-200 dark:border-blue-800',
                     textColor: 'text-blue-700 dark:text-blue-400',
                     dot: 'bg-blue-500',
-                    message: 'You have an active delivery'
+                    message: 'Pick up remaining assigned orders'
+                }
+            case 'delivering':
+                return {
+                    gradient: 'from-indigo-500 to-violet-600',
+                    bgLight: 'bg-indigo-50 dark:bg-indigo-950/30',
+                    borderColor: 'border-indigo-200 dark:border-indigo-800',
+                    textColor: 'text-indigo-700 dark:text-indigo-400',
+                    dot: 'bg-indigo-500',
+                    message: 'You are on the way to customers'
                 }
             case 'returning':
                 return {
@@ -159,7 +194,6 @@ export default async function RiderDashboardPage() {
     const showEmptyState = (!orders || orders.length === 0) && rider.status !== 'returning'
 
     return (
-        <RealtimeRiderOrders riderId={rider.id}>
             <div className="min-h-screen bg-muted/30 pb-24">
                 <header className="sticky top-0 z-50 border-b border-border/60 bg-background/95 backdrop-blur">
                     <div className="max-w-lg mx-auto px-4 py-4">
@@ -198,7 +232,11 @@ export default async function RiderDashboardPage() {
                                 </div>
                                 <div>
                                     <p className="font-bold text-lg text-gray-900 dark:text-white capitalize">
-                                        {rider.status === 'on_delivery' ? 'On Delivery' : rider.status}
+                                        {rider.status === 'on_delivery'
+                                            ? 'Pickup Phase'
+                                            : rider.status === 'delivering'
+                                                ? 'Delivering'
+                                                : rider.status}
                                     </p>
                                     <p className={`text-sm ${statusConfig.textColor}`}>{statusConfig.message}</p>
                                 </div>
@@ -413,6 +451,5 @@ export default async function RiderDashboardPage() {
                     )}
                 </div>
             </div>
-        </RealtimeRiderOrders>
     )
 }

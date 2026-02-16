@@ -121,9 +121,26 @@ export async function assignRiderToOrder(orderId: string, riderId: string) {
         return { error: 'Rider not found' }
     }
 
-    // Allow assignment if rider is online or already on delivery (multi-order support)
+    // Allow assignment if rider is online or in pickup phase.
     if (rider.status !== 'online' && rider.status !== 'on_delivery') {
         return { error: 'Rider is not available. Only online or active riders can be assigned orders.' }
+    }
+
+    const { count: activeDeliveryCount } = await supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('rider_id', riderId)
+        .eq('status', 'out_for_delivery')
+
+    const { count: pendingPickupCount } = await supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('rider_id', riderId)
+        .in('status', ['pending', 'confirmed', 'preparing', 'ready'])
+        .is('picked_up_at', null)
+
+    if ((activeDeliveryCount || 0) > 0 && (pendingPickupCount || 0) === 0) {
+        return { error: 'Rider has already left for delivery. Assign after they return or while pickup is pending.' }
     }
 
     // Update order with rider

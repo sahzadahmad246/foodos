@@ -1,18 +1,34 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 
 interface RealtimeRiderOrdersProps {
     riderId: string
-    children: React.ReactNode
+    children?: React.ReactNode
 }
 
 export function RealtimeRiderOrders({ riderId, children }: RealtimeRiderOrdersProps) {
     const router = useRouter()
+    const pathname = usePathname()
     const supabase = createClient()
+    const refreshTimeoutRef = useRef<number | null>(null)
+    const alertedOrderIdsRef = useRef<Set<string>>(new Set())
+
+    const playAssignedAlert = useCallback(() => {
+        if (typeof window === 'undefined' || !('speechSynthesis' in window)) return
+
+        const speechText = 'Dear partner, you have a new order assigned.'
+        const utterance = new SpeechSynthesisUtterance(speechText)
+        utterance.lang = 'en-US'
+        utterance.rate = 0.95
+        utterance.pitch = 1
+
+        window.speechSynthesis.cancel()
+        window.speechSynthesis.speak(utterance)
+    }, [])
 
     useEffect(() => {
         // Subscribe to order changes for this rider
@@ -33,9 +49,42 @@ export function RealtimeRiderOrders({ riderId, children }: RealtimeRiderOrdersPr
                         const newOrder = payload.new as any
                         const oldOrder = payload.old as any
 
-                        // New order assigned to this rider
-                        if (payload.eventType === 'UPDATE' && newOrder.rider_id === riderId && (!oldOrder || oldOrder.rider_id !== riderId)) {
+                        const isEligibleAssignmentStatus = ['pending', 'confirmed', 'preparing', 'ready'].includes(newOrder?.status)
+                        const hasNotAlertedThisOrder = newOrder?.id && !alertedOrderIdsRef.current.has(newOrder.id)
+                        const riderChangedToThisRider =
+                            payload.eventType === 'UPDATE' &&
+                            typeof oldOrder?.rider_id !== 'undefined' &&
+                            oldOrder?.rider_id !== riderId &&
+                            newOrder?.rider_id === riderId
+                        const statusUnchangedDuringUpdate =
+                            payload.eventType === 'UPDATE' &&
+                            typeof oldOrder?.status !== 'undefined' &&
+                            oldOrder?.status === newOrder?.status
+                        const insertedAlreadyAssigned =
+                            payload.eventType === 'INSERT' &&
+                            newOrder?.rider_id === riderId
+
+                        // Speak only once for true assignment-like events.
+                        if (
+                            hasNotAlertedThisOrder &&
+                            isEligibleAssignmentStatus &&
+                            (riderChangedToThisRider || insertedAlreadyAssigned || statusUnchangedDuringUpdate)
+                        ) {
+                            alertedOrderIdsRef.current.add(newOrder.id)
                             toast.success('🚴 New order assigned to you!')
+                            playAssignedAlert()
+
+                            if (pathname !== '/rider') {
+                                router.push('/rider')
+                            }
+
+                            if (refreshTimeoutRef.current) {
+                                window.clearTimeout(refreshTimeoutRef.current)
+                            }
+                            refreshTimeoutRef.current = window.setTimeout(() => {
+                                router.refresh()
+                            }, 1200)
+                            return
                         }
 
                         // Order status changed to ready (preparing → ready)
@@ -65,8 +114,15 @@ export function RealtimeRiderOrders({ riderId, children }: RealtimeRiderOrdersPr
 
         return () => {
             supabase.removeChannel(channel)
+            if (refreshTimeoutRef.current) {
+                window.clearTimeout(refreshTimeoutRef.current)
+                refreshTimeoutRef.current = null
+            }
+            if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+                window.speechSynthesis.cancel()
+            }
         }
-    }, [riderId, supabase, router])
+    }, [riderId, supabase, router, pathname, playAssignedAlert])
 
     return <>{children}</>
 }

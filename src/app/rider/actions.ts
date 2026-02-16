@@ -48,10 +48,19 @@ export async function pickupOrder(orderId: string, riderId: string) {
         return { error: 'Order not found or not assigned to you' }
     }
 
-    // Update rider status to on_delivery
+    const { count: pendingPickupCount } = await supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('rider_id', riderId)
+        .in('status', ['pending', 'confirmed', 'preparing', 'ready'])
+        .is('picked_up_at', null)
+
+    const nextRiderStatus = (pendingPickupCount || 0) > 0 ? 'on_delivery' : 'delivering'
+
+    // Rider leaves restaurant only when all assigned pickups are done.
     const { error: riderError } = await supabase
         .from('riders')
-        .update({ status: 'on_delivery' })
+        .update({ status: nextRiderStatus })
         .eq('id', riderId)
 
     if (riderError) {
@@ -60,7 +69,11 @@ export async function pickupOrder(orderId: string, riderId: string) {
 
     revalidatePath('/rider')
     revalidatePath('/dashboard/orders')
-    return { success: true }
+    return {
+        success: true,
+        hasMorePickups: (pendingPickupCount || 0) > 0,
+        pendingPickupCount: pendingPickupCount || 0,
+    }
 }
 
 export async function deliverOrder(
@@ -141,8 +154,13 @@ export async function deliverOrder(
         .eq('status', 'out_for_delivery')
         .neq('id', orderId)
 
-    // Only set to returning if no other active deliveries
-    if (!count) {
+    // Keep rider in delivering mode while any order is still out for delivery.
+    if (count && count > 0) {
+        await supabase
+            .from('riders')
+            .update({ status: 'delivering' })
+            .eq('id', riderId)
+    } else {
         await supabase
             .from('riders')
             .update({ status: 'returning' })

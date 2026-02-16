@@ -75,9 +75,9 @@ export async function createOrder(data: CreateOrderData) {
                 tax_amount: data.taxAmount,
                 total_amount: data.totalAmount,
                 payment_method: data.paymentMethod,
+                payment_status: data.paymentMethod === 'online' ? 'paid' : 'pending',
                 notes: data.notes,
                 status: 'pending',
-                payment_status: 'pending',
                 pickup_otp: (!data.customerAddress) ? Math.floor(100000 + Math.random() * 900000).toString() : null,
             })
             .select()

@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { NewOrderModal } from './new-order-modal'
+import { toast } from 'sonner'
 
 interface OrderItem {
     id: string
@@ -31,9 +32,56 @@ export function GlobalNewOrderListener({ restaurantId }: GlobalNewOrderListenerP
     const supabase = createClient()
     const [newOrder, setNewOrder] = useState<NewOrder | null>(null)
     const [showNewOrderModal, setShowNewOrderModal] = useState(false)
+    const [pendingCount, setPendingCount] = useState(0)
+    const reminderIntervalRef = useRef<number | null>(null)
+    const requestedNotificationPermissionRef = useRef(false)
+
+    const fetchPendingCount = useCallback(async () => {
+        const { count } = await supabase
+            .from('orders')
+            .select('*', { count: 'exact', head: true })
+            .eq('restaurant_id', restaurantId)
+            .eq('status', 'pending')
+
+        setPendingCount(count || 0)
+    }, [restaurantId, supabase])
+
+    const speakReminder = useCallback((count: number) => {
+        if (typeof window === 'undefined' || !('speechSynthesis' in window)) return
+
+        window.speechSynthesis.cancel()
+        const message = `You have ${count} new ${count === 1 ? 'order' : 'orders'}. Please accept or reject.`
+        const utterance = new SpeechSynthesisUtterance(message)
+        utterance.rate = 1
+        utterance.pitch = 1
+        window.speechSynthesis.speak(utterance)
+    }, [])
+
+    const notifyReminder = useCallback((count: number) => {
+        const message = `You have ${count} pending ${count === 1 ? 'order' : 'orders'}. Please accept or reject.`
+        toast.warning(message, { id: 'pending-order-reminder' })
+
+        if (typeof window === 'undefined' || !('Notification' in window)) return
+
+        if (Notification.permission === 'granted') {
+            new Notification('New order reminder', { body: message })
+            return
+        }
+
+        if (Notification.permission === 'default' && !requestedNotificationPermissionRef.current) {
+            requestedNotificationPermissionRef.current = true
+            void Notification.requestPermission().then((permission) => {
+                if (permission === 'granted') {
+                    new Notification('New order reminder', { body: message })
+                }
+            })
+        }
+    }, [])
 
     useEffect(() => {
         if (!restaurantId) return
+
+        void fetchPendingCount()
 
         const channel = supabase
             .channel(`global-restaurant-orders-${restaurantId}`)
@@ -57,6 +105,31 @@ export function GlobalNewOrderListener({ restaurantId }: GlobalNewOrderListenerP
                         order_items: items || [],
                     })
                     setShowNewOrderModal(true)
+                    void fetchPendingCount()
+                }
+            )
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'orders',
+                    filter: `restaurant_id=eq.${restaurantId}`,
+                },
+                async () => {
+                    await fetchPendingCount()
+                }
+            )
+            .on(
+                'postgres_changes',
+                {
+                    event: 'DELETE',
+                    schema: 'public',
+                    table: 'orders',
+                    filter: `restaurant_id=eq.${restaurantId}`,
+                },
+                async () => {
+                    await fetchPendingCount()
                 }
             )
             .subscribe()
@@ -64,7 +137,32 @@ export function GlobalNewOrderListener({ restaurantId }: GlobalNewOrderListenerP
         return () => {
             supabase.removeChannel(channel)
         }
-    }, [restaurantId, supabase])
+    }, [restaurantId, supabase, fetchPendingCount])
+
+    useEffect(() => {
+        if (pendingCount <= 0) {
+            if (reminderIntervalRef.current) {
+                window.clearInterval(reminderIntervalRef.current)
+                reminderIntervalRef.current = null
+            }
+            return
+        }
+
+        notifyReminder(pendingCount)
+        speakReminder(pendingCount)
+
+        reminderIntervalRef.current = window.setInterval(() => {
+            notifyReminder(pendingCount)
+            speakReminder(pendingCount)
+        }, 60000)
+
+        return () => {
+            if (reminderIntervalRef.current) {
+                window.clearInterval(reminderIntervalRef.current)
+                reminderIntervalRef.current = null
+            }
+        }
+    }, [pendingCount, notifyReminder, speakReminder])
 
     const handleCloseModal = () => {
         setShowNewOrderModal(false)

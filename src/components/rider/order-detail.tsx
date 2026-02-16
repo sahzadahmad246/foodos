@@ -22,7 +22,6 @@ import {
 } from '@/components/ui/alert-dialog'
 import { pickupOrder, deliverOrder, confirmReturnOtp } from '@/app/rider/actions'
 import { toast } from 'sonner'
-import { Input } from '@/components/ui/input'
 
 interface OrderItem {
     id: string
@@ -74,6 +73,7 @@ export function RiderOrderDetail({ order, riderId }: RiderOrderDetailProps) {
     const [returnOtp, setReturnOtp] = useState('')
     const [returnError, setReturnError] = useState('')
     const [isVerifyingReturn, setIsVerifyingReturn] = useState(false)
+    const [isOtpFocused, setIsOtpFocused] = useState(false)
 
     const isReady = order.status === 'ready'
     const isOnTheWay = order.status === 'out_for_delivery'
@@ -160,7 +160,17 @@ export function RiderOrderDetail({ order, riderId }: RiderOrderDetailProps) {
             if (result.error) {
                 toast.error(result.error)
             } else {
-                toast.success('Order picked up! Navigate to customer.')
+                if ('hasMorePickups' in result && result.hasMorePickups) {
+                    const count = 'pendingPickupCount' in result ? result.pendingPickupCount : 0
+                    toast.success(
+                        count > 0
+                            ? `${count} more order${count > 1 ? 's' : ''} waiting pickup.`
+                            : 'More assigned orders are waiting pickup.'
+                    )
+                } else {
+                    toast.success('Order picked up! Choose any order to proceed with delivery.')
+                }
+                router.replace('/rider')
                 router.refresh()
             }
         })
@@ -380,28 +390,58 @@ export function RiderOrderDetail({ order, riderId }: RiderOrderDetailProps) {
                         </div>
 
                         {/* Return Instructions with OTP Input */}
-                        <div className="mt-4 p-4 bg-white dark:bg-gray-900 rounded-xl border border-amber-200 dark:border-amber-800">
-                            <div className="flex items-center gap-2 mb-2">
+                        <div className="mt-4">
+                            <div className="mb-2 flex items-center gap-2">
                                 <RotateCcw className="h-4 w-4 text-amber-600" />
-                                <span className="font-semibold text-amber-700 dark:text-amber-400">Return Required</span>
+                                <span className="font-semibold text-amber-800 dark:text-amber-300">Return Required</span>
                             </div>
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                            <p className="mb-3 text-sm text-gray-600 dark:text-gray-400">
                                 Return the order to {order.restaurant?.name || 'the restaurant'} and enter the OTP they give you:
                             </p>
 
                             <div className="space-y-3">
-                                <Input
-                                    type="text"
-                                    inputMode="numeric"
-                                    maxLength={6}
-                                    placeholder="Enter 6-digit OTP"
-                                    value={returnOtp}
-                                    onChange={(e) => {
-                                        setReturnOtp(e.target.value.replace(/\D/g, ''))
-                                        setReturnError('')
-                                    }}
-                                    className="text-center text-2xl font-mono tracking-widest"
-                                />
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        inputMode="numeric"
+                                        maxLength={6}
+                                        value={returnOtp}
+                                        onFocus={() => setIsOtpFocused(true)}
+                                        onBlur={() => setIsOtpFocused(false)}
+                                        onChange={(e) => {
+                                            setReturnOtp(e.target.value.replace(/\D/g, ''))
+                                            setReturnError('')
+                                        }}
+                                        className="absolute inset-0 z-10 h-full w-full cursor-text opacity-0"
+                                        aria-label="Enter 6-digit return OTP"
+                                    />
+                                    <div className="grid grid-cols-6 gap-2">
+                                        {Array.from({ length: 6 }).map((_, index) => (
+                                            (() => {
+                                                const isActiveSlot = isOtpFocused && index === Math.min(returnOtp.length, 5)
+                                                const hasDigit = Boolean(returnOtp[index])
+                                                return (
+                                                    <div
+                                                        key={index}
+                                                        className={`relative flex h-12 items-center justify-center rounded-lg border bg-white text-lg font-semibold shadow-sm transition-all dark:bg-gray-950 ${
+                                                            isActiveSlot
+                                                                ? 'border-amber-500 ring-2 ring-amber-200 dark:border-amber-500 dark:ring-amber-900/60'
+                                                                : 'border-amber-300 dark:border-amber-700'
+                                                        } ${hasDigit ? 'text-amber-900 dark:text-amber-200' : 'text-amber-300 dark:text-amber-700'}`}
+                                                    >
+                                                        {hasDigit ? returnOtp[index] : ''}
+                                                        {isActiveSlot && !hasDigit && (
+                                                            <span className="absolute h-5 w-0.5 animate-pulse bg-amber-600 dark:bg-amber-300" />
+                                                        )}
+                                                    </div>
+                                                )
+                                            })()
+                                        ))}
+                                    </div>
+                                </div>
+                                <p className="text-center text-xs text-amber-700/80 dark:text-amber-300/80">
+                                    Enter 6-digit OTP
+                                </p>
 
                                 {returnError && (
                                     <p className="text-sm text-red-500 text-center">{returnError}</p>

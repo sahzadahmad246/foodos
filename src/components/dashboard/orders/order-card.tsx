@@ -109,9 +109,16 @@ export function OrderCard({ order }: OrderCardProps) {
     const [returnError, setReturnError] = useState('')
 
     const statusConfig = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending
-    const paymentMethodLabel = order.payment_method === 'cod'
-        ? 'Cash on Delivery'
-        : (order.payment_method?.toUpperCase() || 'Online')
+    const isCodPayment = order.payment_method === 'cod'
+    const paymentSummaryLabel = isCodPayment
+        ? (order.payment_status === 'paid' ? 'Cash collected' : 'Collect on delivery')
+        : (
+            order.payment_status === 'paid'
+                ? 'Paid'
+                : order.payment_status === 'failed'
+                    ? 'Payment failed'
+                    : 'Online pending'
+        )
     const isLoading = loadingAction !== null
 
     // Reset state when dialog opens
@@ -395,8 +402,7 @@ export function OrderCard({ order }: OrderCardProps) {
                             </div>
                             <div className="pt-2 border-t text-xs flex items-center gap-2 text-muted-foreground">
                                 <Banknote className="h-4 w-4" />
-                                <span className="font-medium text-foreground">{paymentMethodLabel}</span>
-                                <span className="text-muted-foreground">• {order.payment_status}</span>
+                                <span className="font-medium text-foreground">{paymentSummaryLabel}</span>
                             </div>
                         </div>
                     </div>

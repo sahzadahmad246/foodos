@@ -2,7 +2,6 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { UserDropdown } from '@/components/user-dropdown'
-import { RealtimeRiderOrders } from '@/components/rider/realtime-rider-orders'
 import { OrdersDateNav } from '@/components/rider/orders-date-nav'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -90,7 +89,6 @@ export default async function RiderOrdersPage({ searchParams }: PageProps) {
         .limit(100)
 
     return (
-        <RealtimeRiderOrders riderId={rider.id}>
             <div className="min-h-screen bg-muted/30 pb-24">
                 <header className="sticky top-0 z-40 border-b border-border/60 bg-background/95 backdrop-blur">
                     <div className="mx-auto flex max-w-lg items-center justify-between px-4 py-4">
@@ -152,6 +150,5 @@ export default async function RiderOrdersPage({ searchParams }: PageProps) {
                     )}
                 </main>
             </div>
-        </RealtimeRiderOrders>
     )
 }

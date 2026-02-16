@@ -14,7 +14,7 @@ interface Rider {
     phone: string
     vehicle_type: string
     vehicle_number: string
-    status: 'online' | 'offline' | 'on_delivery'
+    status: 'online' | 'offline' | 'on_delivery' | 'delivering' | 'returning'
     is_active: boolean
     cash_in_hand?: number | null
     cash_collected_total?: number | null
@@ -198,7 +198,7 @@ export default async function RidersPage() {
         .filter((entry) => entry.type === 'collect' && new Date(entry.created_at) >= today)
         .reduce((sum, entry) => sum + Number(entry.amount || 0), 0)
     const onlineCount = typedRiders.filter((r) => r.status === 'online' && r.is_active).length
-    const onDeliveryCount = typedRiders.filter((r) => r.status === 'on_delivery').length
+    const onDeliveryCount = typedRiders.filter((r) => r.status === 'on_delivery' || r.status === 'delivering').length
 
     return (
         <div className="space-y-5 pb-8">

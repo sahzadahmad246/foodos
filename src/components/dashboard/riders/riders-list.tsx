@@ -8,7 +8,7 @@ interface Rider {
     phone: string
     vehicle_type: string
     vehicle_number: string
-    status: 'online' | 'offline' | 'on_delivery'
+    status: 'online' | 'offline' | 'on_delivery' | 'delivering' | 'returning'
     is_active: boolean
     cash_in_hand?: number | null
     cash_collected_total?: number | null
