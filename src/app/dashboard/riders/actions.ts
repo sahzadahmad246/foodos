@@ -161,7 +161,8 @@ export async function recordRiderCashDeposit(riderId: string, amount: number, no
         return { error: 'Unauthorized' }
     }
 
-    if (!amount || amount <= 0) {
+    const normalizedAmount = Math.round(Number(amount) * 100) / 100
+    if (!normalizedAmount || normalizedAmount <= 0) {
         return { error: 'Invalid amount' }
     }
 
@@ -190,7 +191,7 @@ export async function recordRiderCashDeposit(riderId: string, amount: number, no
     }
 
     const cashInHand = Number(rider.cash_in_hand || 0)
-    if (amount > cashInHand) {
+    if (normalizedAmount - cashInHand > 0.001) {
         return { error: 'Deposit exceeds cash in hand' }
     }
 
@@ -200,7 +201,7 @@ export async function recordRiderCashDeposit(riderId: string, amount: number, no
             rider_id: riderId,
             restaurant_id: restaurant.id,
             type: 'deposit',
-            amount,
+            amount: normalizedAmount,
             note: note || null
         })
 

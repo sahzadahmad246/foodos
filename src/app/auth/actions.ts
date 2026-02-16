@@ -4,6 +4,23 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 
+async function getPostAuthRedirectPath() {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) return '/'
+
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .maybeSingle()
+
+    if (profile?.role === 'restaurant_owner') return '/dashboard'
+    if (profile?.role === 'rider') return '/rider'
+    return '/'
+}
+
 export async function login(formData: FormData): Promise<{ error?: string; success?: string }> {
     const supabase = await createClient()
 
@@ -19,8 +36,9 @@ export async function login(formData: FormData): Promise<{ error?: string; succe
         return { error: error.message }
     }
 
+    const redirectPath = await getPostAuthRedirectPath()
     revalidatePath('/', 'layout')
-    redirect('/dashboard')
+    redirect(redirectPath)
 }
 
 export async function signup(formData: FormData): Promise<{ error?: string; success?: string }> {
@@ -50,7 +68,8 @@ export async function signup(formData: FormData): Promise<{ error?: string; succ
 
     if (data.session) {
         // User is signed in (email confirmation disabled or auto-confirmed)
-        redirect('/dashboard')
+        const redirectPath = await getPostAuthRedirectPath()
+        redirect(redirectPath)
     }
 
     return { success: 'Check your email to continue sign in process' }

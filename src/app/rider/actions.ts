@@ -268,33 +268,35 @@ export async function requestCashDeposit(amount: number, note?: string) {
         return { error: 'Unauthorized' }
     }
 
-    if (!amount || amount <= 0) {
+    const normalizedAmount = Math.round(Number(amount) * 100) / 100
+    if (!normalizedAmount || normalizedAmount <= 0) {
         return { error: 'Invalid amount' }
     }
 
-    const { data: riderByUserId } = await supabase
+    const riderByEmail = user.email
+        ? await supabase
+            .from('riders')
+            .select('id, restaurant_id, cash_in_hand')
+            .eq('email', user.email)
+            .maybeSingle()
+            .then((res) => res.data)
+        : null
+
+    const riderByUserId = await supabase
         .from('riders')
         .select('id, restaurant_id, cash_in_hand')
         .eq('user_id', user.id)
-        .single()
+        .maybeSingle()
+        .then((res) => res.data)
 
-    const rider =
-        riderByUserId ||
-        (user.email
-            ? await supabase
-                .from('riders')
-                .select('id, restaurant_id, cash_in_hand')
-                .eq('email', user.email)
-                .single()
-                .then((res) => res.data)
-            : null)
+    const rider = riderByEmail || riderByUserId
 
     if (!rider) {
         return { error: 'Rider not found' }
     }
 
     const cashInHand = Number(rider.cash_in_hand || 0)
-    if (amount > cashInHand) {
+    if (normalizedAmount - cashInHand > 0.001) {
         return { error: 'Amount exceeds cash in hand' }
     }
 
@@ -303,7 +305,7 @@ export async function requestCashDeposit(amount: number, note?: string) {
         .insert({
             rider_id: rider.id,
             restaurant_id: rider.restaurant_id,
-            amount,
+            amount: normalizedAmount,
             note: note || null,
             status: 'pending'
         })

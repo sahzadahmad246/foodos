@@ -77,6 +77,7 @@ export function RiderOrderDetail({ order, riderId }: RiderOrderDetailProps) {
 
     const isReady = order.status === 'ready'
     const isOnTheWay = order.status === 'out_for_delivery'
+    const isDelivered = order.status === 'delivered'
     const isCancelled = order.status === 'cancelled'
     const isCOD = order.payment_method === 'cod'
     const requiresLocationCheck = !!order.customer_latitude && !!order.customer_longitude
@@ -237,7 +238,7 @@ export function RiderOrderDetail({ order, riderId }: RiderOrderDetailProps) {
             <header className="sticky top-0 z-50 border-b bg-white dark:bg-gray-900">
                 <div className="max-w-lg mx-auto px-4 py-4">
                     <div className="flex items-center gap-4">
-                        <Link href="/rider">
+                        <Link href="/rider/orders">
                             <button className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
                                 <ArrowLeft className="h-5 w-5 text-gray-700 dark:text-gray-300" />
                             </button>
@@ -458,38 +459,44 @@ export function RiderOrderDetail({ order, riderId }: RiderOrderDetailProps) {
                 )}
 
                 {/* Delivery Destination Card */}
-                {order.customer_address && (
+                {(order.customer_address || isDelivered) && (
                     <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
                         <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2">
                             <MapPin className="h-4 w-4 text-gray-500" />
-                            <span className="font-medium text-sm text-gray-900 dark:text-white">Delivery Address</span>
+                            <span className="font-medium text-sm text-gray-900 dark:text-white">
+                                {isDelivered ? 'Customer' : 'Delivery Address'}
+                            </span>
                         </div>
                         <div className="p-4">
                             <p className="font-semibold text-gray-900 dark:text-white">
                                 {order.customer_name}
                             </p>
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                {order.customer_address}
-                            </p>
+                            {!isDelivered && (
+                                <>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                        {order.customer_address}
+                                    </p>
 
-                            <div className="flex gap-3 mt-4">
-                                {order.customer_phone && (
-                                    <Button variant="outline" asChild className="flex-1 h-10 rounded-xl text-sm">
-                                        <a href={`tel:${order.customer_phone}`}>
-                                            <Phone className="h-4 w-4 mr-2" />
-                                            Call
-                                        </a>
-                                    </Button>
-                                )}
-                                {getDirectionsUrl() && (
-                                    <Button variant="outline" asChild className="flex-1 h-10 rounded-xl text-sm">
-                                        <a href={getDirectionsUrl()!} target="_blank" rel="noopener noreferrer">
-                                            <Navigation className="h-4 w-4 mr-2" />
-                                            Navigate
-                                        </a>
-                                    </Button>
-                                )}
-                            </div>
+                                    <div className="flex gap-3 mt-4">
+                                        {order.customer_phone && (
+                                            <Button variant="outline" asChild className="flex-1 h-10 rounded-xl text-sm">
+                                                <a href={`tel:${order.customer_phone}`}>
+                                                    <Phone className="h-4 w-4 mr-2" />
+                                                    Call
+                                                </a>
+                                            </Button>
+                                        )}
+                                        {getDirectionsUrl() && (
+                                            <Button variant="outline" asChild className="flex-1 h-10 rounded-xl text-sm">
+                                                <a href={getDirectionsUrl()!} target="_blank" rel="noopener noreferrer">
+                                                    <Navigation className="h-4 w-4 mr-2" />
+                                                    Navigate
+                                                </a>
+                                            </Button>
+                                        )}
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </div>
                 )}
@@ -507,7 +514,9 @@ export function RiderOrderDetail({ order, riderId }: RiderOrderDetailProps) {
                                     <div className="flex items-center justify-between">
                                         <div>
                                             <p className="font-medium text-gray-900 dark:text-white">Cash on Delivery</p>
-                                            <p className="text-sm text-gray-500 dark:text-gray-400">Collect from customer</p>
+                                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                                                {isDelivered ? 'Cash collected from customer' : 'Collect from customer'}
+                                            </p>
                                         </div>
                                         <p className="text-2xl font-bold text-gray-900 dark:text-white">
                                             ₹{order.total_amount}

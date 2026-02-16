@@ -316,6 +316,11 @@ create policy "Riders can view their own cash ledger" on rider_cash_ledger
     rider_id in (select id from riders where user_id = auth.uid())
   );
 
+create policy "Riders can view their own cash ledger by email" on rider_cash_ledger
+  for select using (
+    rider_id in (select id from riders where email = (auth.jwt() ->> 'email'))
+  );
+
 create policy "Owners can record rider cash deposits" on rider_cash_ledger
   for insert with check (
     restaurant_id in (select id from restaurants where owner_id = auth.uid())
@@ -337,6 +342,11 @@ create policy "Riders can view their deposit requests" on rider_cash_deposit_req
     rider_id in (select id from riders where user_id = auth.uid())
   );
 
+create policy "Riders can view their deposit requests by email" on rider_cash_deposit_requests
+  for select using (
+    rider_id in (select id from riders where email = (auth.jwt() ->> 'email'))
+  );
+
 create policy "Riders can cancel their pending requests" on rider_cash_deposit_requests
   for update using (
     rider_id in (select id from riders where user_id = auth.uid())
@@ -344,6 +354,16 @@ create policy "Riders can cancel their pending requests" on rider_cash_deposit_r
   )
   with check (
     rider_id in (select id from riders where user_id = auth.uid())
+    and status = 'cancelled'
+  );
+
+create policy "Riders can cancel pending requests by email" on rider_cash_deposit_requests
+  for update using (
+    rider_id in (select id from riders where email = (auth.jwt() ->> 'email'))
+    and status = 'pending'
+  )
+  with check (
+    rider_id in (select id from riders where email = (auth.jwt() ->> 'email'))
     and status = 'cancelled'
   );
 

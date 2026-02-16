@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -111,7 +112,6 @@ export function RiderCard({ rider, ledgerEntries, depositRequests }: RiderCardPr
     const VehicleIcon = rider.vehicle_type === 'car' ? Car : Bike
     const cashInHand = Number(rider.cash_in_hand || 0)
     const deliveredCount = Number(rider.delivered_count || 0)
-    const recentLedger = ledgerEntries.slice(0, 3)
     const pendingRequests = depositRequests.filter((r) => r.status === 'pending')
     const formatLedgerTime = (value: string) => {
         try {
@@ -170,16 +170,24 @@ export function RiderCard({ rider, ledgerEntries, depositRequests }: RiderCardPr
 
     return (
         <>
-            <Card className={`transition-all ${!rider.is_active ? 'opacity-60' : ''}`}>
-                <CardContent className="p-4">
+            <Card className={`overflow-hidden rounded-none border-0 bg-transparent shadow-none ${!rider.is_active ? 'opacity-70' : ''}`}>
+                <CardContent className="space-y-3 rounded-lg p-3 transition-colors hover:bg-muted/20">
                     <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                        <div className="flex items-center gap-3 min-w-0">
+                            <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center shrink-0 border border-primary/20">
                                 <User className="h-6 w-6 text-primary" />
                             </div>
-                            <div>
-                                <p className="font-semibold">{rider.name}</p>
-                                <p className="text-sm text-muted-foreground flex items-center gap-1">
+                            <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                    <p className="font-semibold truncate text-base">{rider.name}</p>
+                                    <Badge
+                                        variant="secondary"
+                                        className={`${statusConfig[rider.status].color} text-white font-medium`}
+                                    >
+                                        {statusConfig[rider.status].label}
+                                    </Badge>
+                                </div>
+                                <p className="text-sm text-muted-foreground flex items-center gap-1 truncate">
                                     <Mail className="h-3 w-3" />
                                     {rider.email}
                                 </p>
@@ -208,13 +216,7 @@ export function RiderCard({ rider, ledgerEntries, depositRequests }: RiderCardPr
                         </DropdownMenu>
                     </div>
 
-                    <div className="mt-4 flex flex-wrap items-center gap-2">
-                        <Badge
-                            variant="secondary"
-                            className={`${statusConfig[rider.status].color} text-white`}
-                        >
-                            {statusConfig[rider.status].label}
-                        </Badge>
+                    <div className="flex flex-wrap items-center gap-2">
                         {!rider.is_active && (
                             <Badge variant="outline" className="text-red-500 border-red-500">
                                 Inactive
@@ -222,12 +224,12 @@ export function RiderCard({ rider, ledgerEntries, depositRequests }: RiderCardPr
                         )}
                     </div>
 
-                    <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                        <div className="flex items-center gap-2 text-muted-foreground">
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div className="flex items-center gap-2 text-muted-foreground rounded-xl border border-border/50 bg-background/70 px-2.5 py-2">
                             <Phone className="h-4 w-4" />
-                            <span>{rider.phone}</span>
+                            <span className="truncate">{rider.phone}</span>
                         </div>
-                        <div className="flex items-center gap-2 text-muted-foreground">
+                        <div className="flex items-center gap-2 text-muted-foreground rounded-xl border border-border/50 bg-background/70 px-2.5 py-2">
                             <VehicleIcon className="h-4 w-4" />
                             <span className="capitalize">{rider.vehicle_type}</span>
                             {rider.vehicle_number && (
@@ -238,31 +240,36 @@ export function RiderCard({ rider, ledgerEntries, depositRequests }: RiderCardPr
                         </div>
                     </div>
 
-                    <div className="mt-4 rounded-xl border border-border/60 bg-background/60 p-3 space-y-3">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2 text-sm font-semibold">
-                                <Banknote className="h-4 w-4 text-emerald-600" />
-                                Cash in hand
+                    <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-2">
+                            <div className="rounded-xl border border-emerald-200/60 bg-emerald-50/60 dark:bg-emerald-950/20 px-3 py-2.5">
+                                <div className="flex items-center gap-2 text-xs font-medium text-emerald-700 dark:text-emerald-300 uppercase tracking-wide">
+                                    <Banknote className="h-3.5 w-3.5" />
+                                    Cash in hand
+                                </div>
+                                <div className="mt-1 text-lg font-bold text-emerald-700 dark:text-emerald-300">₹{cashInHand.toFixed(2)}</div>
                             </div>
-                            <div className="text-lg font-bold">₹{cashInHand.toFixed(0)}</div>
-                        </div>
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                            <span>Delivered</span>
-                            <span className="font-medium text-foreground">{deliveredCount}</span>
+                            <div className="rounded-xl border border-blue-200/60 bg-blue-50/60 dark:bg-blue-950/20 px-3 py-2.5">
+                                <div className="flex items-center gap-2 text-xs font-medium text-blue-700 dark:text-blue-300 uppercase tracking-wide">
+                                    <ArrowDownCircle className="h-3.5 w-3.5" />
+                                    Delivered
+                                </div>
+                                <div className="mt-1 text-lg font-bold text-blue-700 dark:text-blue-300">{deliveredCount}</div>
+                            </div>
                         </div>
 
                         {pendingRequests.length > 0 && (
                             <div className="space-y-2">
                                 {pendingRequests.map((req) => (
-                                    <div key={req.id} className="rounded-lg border border-amber-200 bg-amber-50/60 p-2">
+                                    <div key={req.id} className="rounded-xl border border-amber-200/80 bg-amber-50/70 px-3 py-2.5 dark:border-amber-800/70 dark:bg-amber-950/30">
                                         <div className="flex items-center justify-between text-xs">
-                                            <span className="font-medium text-amber-900">
-                                                Deposit request • ₹{Number(req.amount || 0).toFixed(0)}
+                                            <span className="font-medium text-amber-900 dark:text-amber-300">
+                                                Deposit request • ₹{Number(req.amount || 0).toFixed(2)}
                                             </span>
-                                            <span className="text-amber-700">Pending</span>
+                                            <span className="text-amber-700 dark:text-amber-400">Pending</span>
                                         </div>
                                         {req.note && (
-                                            <div className="text-[11px] text-amber-800/70 mt-1">{req.note}</div>
+                                            <div className="text-[11px] text-amber-800/70 dark:text-amber-300/70 mt-1">{req.note}</div>
                                         )}
                                         <div className="mt-2 flex gap-2">
                                             <Button
@@ -288,43 +295,27 @@ export function RiderCard({ rider, ledgerEntries, depositRequests }: RiderCardPr
                             </div>
                         )}
 
-                        {recentLedger.length > 0 && (
-                            <div className="space-y-2">
-                                {recentLedger.map((entry) => (
-                                    <div key={entry.id} className="flex items-center justify-between text-xs">
-                                        <div className="flex items-center gap-2">
-                                            {entry.type === 'collect' ? (
-                                                <ArrowDownCircle className="h-4 w-4 text-emerald-600" />
-                                            ) : (
-                                                <ArrowUpCircle className="h-4 w-4 text-blue-600" />
-                                            )}
-                                            <span className="text-muted-foreground">
-                                                {entry.type === 'collect' ? 'Collected' : 'Deposited'}
-                                                {entry.order?.order_number ? ` • ${entry.order.order_number}` : ''}
-                                            </span>
-                                        </div>
-                                        <span className={`font-semibold ${entry.type === 'collect' ? 'text-emerald-700' : 'text-blue-700'}`}>
-                                            ₹{Number(entry.amount || 0).toFixed(0)}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-3 gap-2 pt-1">
                             <Button
                                 variant="outline"
                                 size="sm"
                                 onClick={() => setDepositOpen(true)}
+                                className="text-xs rounded-lg"
                             >
                                 Record Deposit
+                            </Button>
+                            <Button variant="secondary" size="sm" asChild className="text-xs rounded-lg">
+                                <Link href={`/dashboard/riders/${rider.id}?name=${encodeURIComponent(rider.name)}`}>
+                                    View Details
+                                </Link>
                             </Button>
                             <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => setLedgerOpen(true)}
+                                className="text-xs rounded-lg"
                             >
-                                View Ledger
+                                Cash Ledger
                             </Button>
                         </div>
                     </div>
@@ -358,7 +349,7 @@ export function RiderCard({ rider, ledgerEntries, depositRequests }: RiderCardPr
                     <DialogHeader>
                         <DialogTitle>Record Cash Deposit</DialogTitle>
                         <DialogDescription>
-                            Rider: {rider.name} • Cash in hand: ₹{cashInHand.toFixed(0)}
+                            Rider: {rider.name} • Cash in hand: ₹{cashInHand.toFixed(2)}
                         </DialogDescription>
                     </DialogHeader>
 
@@ -366,7 +357,7 @@ export function RiderCard({ rider, ledgerEntries, depositRequests }: RiderCardPr
                         <Input
                             type="number"
                             min="0"
-                            step="1"
+                            step="0.01"
                             placeholder="Deposit amount"
                             value={depositAmount}
                             onChange={(e) => setDepositAmount(e.target.value)}
@@ -394,7 +385,7 @@ export function RiderCard({ rider, ledgerEntries, depositRequests }: RiderCardPr
                     <DialogHeader>
                         <DialogTitle>Cash Ledger</DialogTitle>
                         <DialogDescription>
-                            Rider: {rider.name} • Cash in hand: ₹{cashInHand.toFixed(0)}
+                            Rider: {rider.name} • Cash in hand: ₹{cashInHand.toFixed(2)}
                         </DialogDescription>
                     </DialogHeader>
 
@@ -419,7 +410,7 @@ export function RiderCard({ rider, ledgerEntries, depositRequests }: RiderCardPr
                                         </div>
                                     </div>
                                     <div className={`text-sm font-semibold ${entry.type === 'collect' ? 'text-emerald-700' : 'text-blue-700'}`}>
-                                        ₹{Number(entry.amount || 0).toFixed(0)}
+                                        ₹{Number(entry.amount || 0).toFixed(2)}
                                     </div>
                                 </div>
                             ))}

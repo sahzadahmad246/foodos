@@ -1,13 +1,15 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { User } from '@supabase/supabase-js'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { ExternalLink } from 'lucide-react'
 import { UserDropdown } from '@/components/user-dropdown'
 import { MobileSidebar, getPageTitle } from '@/components/dashboard/sidebar'
 import { OnlineToggle } from '@/components/dashboard/online-toggle'
 import { Button } from '@/components/ui/button'
+import { createClient } from '@/lib/supabase/client'
 
 interface HeaderProps {
     user: User
@@ -23,7 +25,43 @@ interface HeaderProps {
 
 export function DashboardHeader({ user, restaurant, profileComplete }: HeaderProps) {
     const pathname = usePathname()
-    const pageTitle = getPageTitle(pathname)
+    const searchParams = useSearchParams()
+    const riderName = searchParams.get('name')
+    const [resolvedRiderName, setResolvedRiderName] = useState<string | null>(null)
+
+    const riderId =
+        pathname.startsWith('/dashboard/riders/')
+            ? pathname.split('/')[3] || null
+            : null
+
+    useEffect(() => {
+        if (!riderId || riderName) {
+            return
+        }
+
+        let cancelled = false
+        ;(async () => {
+            const supabase = createClient()
+            const { data } = await supabase
+                .from('riders')
+                .select('name')
+                .eq('id', riderId)
+                .maybeSingle()
+
+            if (!cancelled) {
+                setResolvedRiderName(data?.name || null)
+            }
+        })()
+
+        return () => {
+            cancelled = true
+        }
+    }, [riderId, riderName])
+
+    const pageTitle =
+        pathname.startsWith('/dashboard/riders/')
+            ? resolvedRiderName || 'Rider Details'
+            : getPageTitle(pathname)
 
     return (
         <header className="flex h-16 items-center justify-between border-b bg-background px-4 md:px-6 sticky top-0 z-20">

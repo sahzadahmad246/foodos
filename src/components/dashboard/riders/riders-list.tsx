@@ -1,10 +1,5 @@
-'use client'
-
-import { useState } from 'react'
 import { RiderCard } from './rider-card'
-import { AddRiderModal } from './add-rider-modal'
-import { Button } from '@/components/ui/button'
-import { Plus, Users } from 'lucide-react'
+import { Users } from 'lucide-react'
 
 interface Rider {
     id: string
@@ -23,34 +18,27 @@ interface Rider {
 
 interface RidersListProps {
     riders: Rider[]
-    restaurantId: string
-    ledgerByRider: Record<string, any[]>
-    requestsByRider: Record<string, any[]>
+    ledgerByRider: Record<string, Array<{
+        id: string
+        type: 'collect' | 'deposit'
+        amount: number
+        created_at: string
+        order?: {
+            order_number?: string | null
+        } | null
+    }>>
+    requestsByRider: Record<string, Array<{
+        id: string
+        amount: number
+        status: 'pending' | 'approved' | 'rejected' | 'cancelled'
+        note?: string | null
+        requested_at: string
+    }>>
 }
 
-export function RidersList({ riders, restaurantId, ledgerByRider, requestsByRider }: RidersListProps) {
-    const [showAddModal, setShowAddModal] = useState(false)
-
-    const onlineCount = riders.filter(r => r.status === 'online' && r.is_active).length
-    const onDeliveryCount = riders.filter(r => r.status === 'on_delivery').length
-
+export function RidersList({ riders, ledgerByRider, requestsByRider }: RidersListProps) {
     return (
         <>
-            <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-4">
-                    <div className="text-sm text-muted-foreground">
-                        <span className="font-medium text-green-600">{onlineCount}</span> online
-                        {onDeliveryCount > 0 && (
-                            <> · <span className="font-medium text-blue-600">{onDeliveryCount}</span> on delivery</>
-                        )}
-                    </div>
-                </div>
-                <Button onClick={() => setShowAddModal(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Rider
-                </Button>
-            </div>
-
             {riders.length === 0 ? (
                 <div className="rounded-xl border-2 border-dashed p-12 text-center">
                     <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -58,29 +46,30 @@ export function RidersList({ riders, restaurantId, ledgerByRider, requestsByRide
                     <p className="text-muted-foreground mb-4">
                         Add your first delivery rider to start managing deliveries
                     </p>
-                    <Button onClick={() => setShowAddModal(true)}>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Your First Rider
-                    </Button>
                 </div>
             ) : (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {riders.map((rider) => (
-                        <RiderCard
-                            key={rider.id}
-                            rider={rider}
-                            ledgerEntries={ledgerByRider[rider.id] || []}
-                            depositRequests={requestsByRider[rider.id] || []}
-                        />
-                    ))}
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+                    {riders.map((rider) => {
+                        const dividerClass = [
+                            'border-b border-border/70',
+                            'md:border-r',
+                            'md:[&:nth-child(2n)]:border-r-0',
+                            'xl:[&:nth-child(2n)]:border-r',
+                            'xl:[&:nth-child(3n)]:border-r-0',
+                        ].join(' ')
+
+                        return (
+                            <div key={rider.id} className={dividerClass}>
+                                <RiderCard
+                                    rider={rider}
+                                    ledgerEntries={ledgerByRider[rider.id] || []}
+                                    depositRequests={requestsByRider[rider.id] || []}
+                                />
+                            </div>
+                        )
+                    })}
                 </div>
             )}
-
-            <AddRiderModal
-                open={showAddModal}
-                onOpenChange={setShowAddModal}
-                restaurantId={restaurantId}
-            />
         </>
     )
 }
