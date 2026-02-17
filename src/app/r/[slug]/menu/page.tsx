@@ -38,7 +38,25 @@ export default async function RestaurantMenuPage({ params }: PageProps) {
         .order("sort_order", { ascending: true })
 
     let buyAgainItems: Array<{ id: string; name: string; orderCount: number }> = []
+    let activeOrder: { id: string; status: string } | null = null
     if (user?.id) {
+        const { data: latestActiveOrder } = await supabase
+            .from("orders")
+            .select("id, status")
+            .eq("customer_id", user.id)
+            .eq("restaurant_id", restaurant.id)
+            .in("status", ["pending", "confirmed", "preparing", "ready", "out_for_delivery"])
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle()
+
+        if (latestActiveOrder) {
+            activeOrder = {
+                id: latestActiveOrder.id,
+                status: latestActiveOrder.status,
+            }
+        }
+
         const { data: recentDeliveredOrders } = await supabase
             .from("orders")
             .select("id")
@@ -83,6 +101,7 @@ export default async function RestaurantMenuPage({ params }: PageProps) {
             categories={categories || []}
             menuItems={menuItems || []}
             buyAgainItems={buyAgainItems}
+            activeOrder={activeOrder}
             user={user}
             mode="menu"
         />

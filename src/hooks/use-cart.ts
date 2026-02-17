@@ -7,6 +7,7 @@ interface CartItem {
     id: string
     name: string
     price: number
+    compare_at_price?: number | null
     quantity: number
     image_url?: string | null
     is_veg: boolean

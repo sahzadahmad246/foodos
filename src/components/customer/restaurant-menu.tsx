@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Search, ShoppingCart, House, UtensilsCrossed, RotateCcw, Flame, Leaf, SlidersHorizontal, X, MapPin, Navigation, Phone } from 'lucide-react'
+import { Search, ShoppingCart, House, UtensilsCrossed, RotateCcw, Flame, Leaf, SlidersHorizontal, X, MapPin, Navigation, Phone, ChevronRight } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -79,6 +79,10 @@ interface RestaurantMenuProps {
     categories: Category[]
     menuItems: MenuItem[]
     buyAgainItems?: BuyAgainItem[]
+    activeOrder?: {
+        id: string
+        status: string
+    } | null
     user?: User | null
     mode?: 'home' | 'menu'
 }
@@ -86,7 +90,7 @@ interface RestaurantMenuProps {
 type FilterType = 'all' | 'veg' | 'nonveg' | 'spicy' | 'bestseller'
 type SortType = 'popular' | 'price_asc' | 'price_desc' | 'prep_asc'
 
-export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItems = [], user, mode = 'home' }: RestaurantMenuProps) {
+export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItems = [], activeOrder = null, user, mode = 'home' }: RestaurantMenuProps) {
     const [searchQuery, setSearchQuery] = useState('')
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
     const [isCartOpen, setIsCartOpen] = useState(false)
@@ -187,6 +191,7 @@ export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItem
     const showcaseItems = filteredItems.slice(0, 8)
 
     const cartItemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0)
+    const cartPreviewItems = cartItems.slice(0, 3)
     const showAppliedFilterChips = filterType !== 'all' || sortType !== 'popular'
     const restaurantAddress = [
         restaurant.address_line1,
@@ -204,6 +209,17 @@ export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItem
             : restaurantAddress
                 ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(restaurantAddress)}`
                 : null
+    const activeOrderStatusLabel = useMemo(() => {
+        if (!activeOrder?.status) return null
+        const map: Record<string, string> = {
+            pending: 'Order placed',
+            confirmed: 'Order confirmed',
+            preparing: 'Order is preparing',
+            ready: 'Order is ready',
+            out_for_delivery: 'Order is on the way',
+        }
+        return map[activeOrder.status] || 'Order update'
+    }, [activeOrder?.status])
 
     const scrollToSection = (type: 'home' | 'menu' | 'buy-again') => {
         setActiveBottomTab(type)
@@ -287,6 +303,11 @@ export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItem
         setOpenCategoryIds((prev) => new Set(prev).add(selectedCategory))
     }, [selectedCategory])
 
+    useEffect(() => {
+        if (mode !== 'menu') return
+        setOpenCategoryIds(new Set(itemsByCategory.map(({ category }) => category.id)))
+    }, [mode, itemsByCategory])
+
     return (
         <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/20">
             <LocationInitializer userId={user?.id} />
@@ -301,7 +322,7 @@ export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItem
             )}
 
             <main className="container mx-auto max-w-7xl px-4 pb-32 pt-0">
-                <section className={`sticky top-0 z-30 -mx-4 overflow-hidden px-4 pb-5 pt-3 transition-colors duration-700 ${mode === 'home' ? topBgOptions[bgIndex] : 'bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/75 border-b'}`}>
+                <section className={`sticky top-0 z-30 -mx-4 overflow-hidden px-4 pb-5 pt-3 transition-colors duration-700 ${mode === 'home' ? topBgOptions[bgIndex] : 'bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80'}`}>
                     <div className="relative">
                     <div className="flex gap-2">
                         <div className="relative flex-1">
@@ -477,7 +498,7 @@ export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItem
                     </section>
                 ) : null}
 
-                <section ref={menuRef}>
+                <section ref={menuRef} className={mode === 'menu' ? 'pt-4' : ''}>
                     {mode === 'home' ? (
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
@@ -503,9 +524,9 @@ export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItem
                                     <p className="text-muted-foreground">No items found for selected filters</p>
                                 </div>
                             ) : (
-                                <div className="space-y-6">
+                                <div className="space-y-8">
                                     {itemsByCategory.map(({ category, items }) => (
-                                        <section key={category.id} id={`category-${category.id}`} className="space-y-3 rounded-2xl border bg-card p-3 shadow-sm sm:p-4">
+                                        <section key={category.id} id={`category-${category.id}`} className="space-y-3 border-b border-border/60 pb-5">
                                             <button
                                                 type="button"
                                                 onClick={() =>
@@ -519,9 +540,9 @@ export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItem
                                                         return next
                                                     })
                                                 }
-                                                className="flex w-full items-center justify-between rounded-lg px-1 py-1.5 text-left"
+                                                className="flex w-full items-center justify-between text-left"
                                             >
-                                                <h3 className="text-lg font-semibold">{category.name}</h3>
+                                                <h3 className="text-lg font-semibold tracking-tight">{category.name}</h3>
                                                 <span className="text-xs text-muted-foreground">
                                                     {items.length} item{items.length > 1 ? 's' : ''} {openCategoryIds.has(category.id) ? '▲' : '▼'}
                                                 </span>
@@ -535,8 +556,8 @@ export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItem
                                     ))}
 
                                     {uncategorizedItems.length > 0 && (
-                                        <section className="rounded-2xl border bg-card p-3 shadow-sm sm:p-4">
-                                            <h3 className="mb-4 text-lg font-semibold">Other Items</h3>
+                                        <section className="space-y-3 border-b border-border/60 pb-5">
+                                            <h3 className="text-lg font-semibold tracking-tight">Other Items</h3>
                                             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                                                 {uncategorizedItems.map((item) => (
                                                     <MenuItemCard key={item.id} item={item} />
@@ -606,16 +627,54 @@ export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItem
                 )}
             </main>
 
+            {activeOrder && (
+                <div className={`fixed left-0 right-0 z-50 px-4 ${cartItemCount > 0 ? 'bottom-36' : 'bottom-20'}`}>
+                    <Link
+                        href={`/orders/${activeOrder.id}`}
+                        className="mx-auto flex h-14 w-full max-w-md items-center justify-between rounded-2xl bg-slate-800/95 px-4 text-white shadow-lg backdrop-blur"
+                    >
+                        <p className="truncate text-sm font-medium">
+                            {activeOrderStatusLabel}
+                        </p>
+                        <span className="flex items-center gap-1 text-sm font-semibold">
+                            View
+                            <ChevronRight className="h-4 w-4" />
+                        </span>
+                    </Link>
+                </div>
+            )}
+
             {cartItemCount > 0 && (
                 <div className="fixed bottom-20 left-0 right-0 z-50 px-4">
-                    <Button
+                    <button
+                        type="button"
                         onClick={() => setIsCartOpen(true)}
-                        className="mx-auto h-14 w-full max-w-md text-base shadow-lg"
-                        size="lg"
+                        className="mx-auto flex h-14 w-full max-w-md items-center justify-between rounded-2xl bg-slate-900/95 px-3.5 text-white shadow-lg backdrop-blur"
                     >
-                        <ShoppingCart className="mr-2 h-5 w-5" />
-                        View Cart ({cartItemCount} {cartItemCount === 1 ? 'item' : 'items'})
-                    </Button>
+                        <div className="flex min-w-0 items-center gap-3">
+                            <div className="flex -space-x-2">
+                                {cartPreviewItems.map((item) => (
+                                    <div key={item.id} className="h-8 w-8 overflow-hidden rounded-full border border-white/35 bg-slate-700">
+                                        {item.image_url ? (
+                                            // eslint-disable-next-line @next/next/no-img-element
+                                            <img src={item.image_url} alt={item.name} className="h-full w-full object-cover" />
+                                        ) : (
+                                            <div className="flex h-full w-full items-center justify-center">
+                                                <ShoppingCart className="h-3.5 w-3.5 text-white/80" />
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                            <p className="truncate text-sm font-medium">
+                                {cartItemCount} {cartItemCount === 1 ? 'item' : 'items'} added
+                            </p>
+                        </div>
+                        <span className="flex items-center gap-1 text-sm font-semibold">
+                            View cart
+                            <ChevronRight className="h-4 w-4" />
+                        </span>
+                    </button>
                 </div>
             )}
 

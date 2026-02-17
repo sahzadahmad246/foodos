@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import { Plus, Leaf, Flame, Clock3 } from 'lucide-react'
+import { Plus, Minus, Leaf, Flame, Clock3 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -41,14 +41,17 @@ interface MenuItemCardProps {
 }
 
 export function MenuItemCard({ item }: MenuItemCardProps) {
-    const { addItem } = useCart()
+    const { addItem, updateQuantity, items } = useCart()
     const [open, setOpen] = useState(false)
+    const cartItem = items.find((cart) => cart.id === item.id)
+    const quantityInCart = cartItem?.quantity ?? 0
 
     const handleAddToCart = () => {
         addItem({
             id: item.id,
             name: item.name,
             price: item.price,
+            compare_at_price: item.compare_at_price,
             image_url: item.image_url,
             is_veg: item.is_veg,
         })
@@ -120,17 +123,44 @@ export function MenuItemCard({ item }: MenuItemCardProps) {
                             )}
                         </div>
                         <div className="mt-3">
-                            <Button
-                                onClick={(e) => {
-                                    e.stopPropagation()
-                                    handleAddToCart()
-                                }}
-                                size="sm"
-                                className="h-8 rounded-full px-4"
-                            >
-                                <Plus className="mr-1 h-4 w-4" />
-                                Add
-                            </Button>
+                            {quantityInCart > 0 ? (
+                                <div
+                                    className="inline-flex items-center gap-1 rounded-full border bg-background p-1"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="icon"
+                                        className="h-8 w-8 rounded-full border-0"
+                                        onClick={() => updateQuantity(item.id, quantityInCart - 1)}
+                                    >
+                                        <Minus className="h-3 w-3" />
+                                    </Button>
+                                    <span className="w-7 text-center text-sm font-semibold">{quantityInCart}</span>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="icon"
+                                        className="h-8 w-8 rounded-full border-0"
+                                        onClick={handleAddToCart}
+                                    >
+                                        <Plus className="h-3 w-3" />
+                                    </Button>
+                                </div>
+                            ) : (
+                                <Button
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        handleAddToCart()
+                                    }}
+                                    size="sm"
+                                    className="h-8 rounded-full px-4"
+                                >
+                                    <Plus className="mr-1 h-4 w-4" />
+                                    Add
+                                </Button>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -254,15 +284,39 @@ export function MenuItemCard({ item }: MenuItemCardProps) {
                                     <p className="text-xs text-muted-foreground line-through">₹{item.compare_at_price}</p>
                                 )}
                             </div>
-                            <Button
-                                onClick={() => {
-                                    handleAddToCart()
-                                    setOpen(false)
-                                }}
-                            >
-                                <Plus className="mr-1 h-4 w-4" />
-                                Add to Cart
-                            </Button>
+                            {quantityInCart > 0 ? (
+                                <div className="inline-flex items-center gap-1 rounded-full border bg-background p-1">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="icon"
+                                        className="h-8 w-8 rounded-full border-0"
+                                        onClick={() => updateQuantity(item.id, quantityInCart - 1)}
+                                    >
+                                        <Minus className="h-3 w-3" />
+                                    </Button>
+                                    <span className="w-7 text-center text-sm font-semibold">{quantityInCart}</span>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="icon"
+                                        className="h-8 w-8 rounded-full border-0"
+                                        onClick={handleAddToCart}
+                                    >
+                                        <Plus className="h-3 w-3" />
+                                    </Button>
+                                </div>
+                            ) : (
+                                <Button
+                                    onClick={() => {
+                                        handleAddToCart()
+                                        setOpen(false)
+                                    }}
+                                >
+                                    <Plus className="mr-1 h-4 w-4" />
+                                    Add to Cart
+                                </Button>
+                            )}
                         </div>
                     </div>
                 </DialogContent>
