@@ -47,6 +47,7 @@ export function GlobalNewOrderListener({
     const [pendingCount, setPendingCount] = useState(0)
     const reminderIntervalRef = useRef<number | null>(null)
     const requestedNotificationPermissionRef = useRef(false)
+    const processedOrderIdsRef = useRef<Set<string>>(new Set())
 
     const fetchPendingCount = useCallback(async () => {
         const { count } = await supabase
@@ -90,10 +91,96 @@ export function GlobalNewOrderListener({
         }
     }, [])
 
+    const processIncomingOrder = useCallback(async (incomingOrder: NewOrder) => {
+        if (!incomingOrder?.id) return
+        if (processedOrderIdsRef.current.has(incomingOrder.id)) return
+
+        processedOrderIdsRef.current.add(incomingOrder.id)
+
+        const { data: items } = await supabase
+            .from('order_items')
+            .select('id, name, price, quantity')
+            .eq('order_id', incomingOrder.id)
+
+        const orderWithItems = {
+            ...incomingOrder,
+            order_items: items || [],
+        }
+
+        if (autoAcceptOrders) {
+            const result = await acceptOrder(orderWithItems.id)
+            if (result.error) {
+                toast.error(`Auto-accept failed for ${orderWithItems.order_number}`)
+            } else {
+                const printed = printThermalBill(restaurantInfo, {
+                    ...orderWithItems,
+                    items_total: Number((orderWithItems as any).items_total || orderWithItems.total_amount || 0),
+                    delivery_fee: Number((orderWithItems as any).delivery_fee || 0),
+                    tax_amount: Number((orderWithItems as any).tax_amount || 0),
+                    payment_status: (orderWithItems as any).payment_status || 'pending',
+                })
+                const kotPrinted = printThermalKot(restaurantInfo, {
+                    ...orderWithItems,
+                    items_total: Number((orderWithItems as any).items_total || orderWithItems.total_amount || 0),
+                    delivery_fee: Number((orderWithItems as any).delivery_fee || 0),
+                    tax_amount: Number((orderWithItems as any).tax_amount || 0),
+                    payment_status: (orderWithItems as any).payment_status || 'pending',
+                })
+                if (!printed) {
+                    toast.warning('Auto-accepted. Please enable popups to print or save as PDF.')
+                }
+                if (!kotPrinted) {
+                    toast.warning('Auto-accepted. Please enable popups to print KOT.')
+                }
+                if (printed || kotPrinted) {
+                    toast.success(`Auto-accepted ${orderWithItems.order_number} and opened bill print.`)
+                }
+            }
+        } else {
+            setNewOrder(orderWithItems)
+            setShowNewOrderModal(true)
+        }
+
+        void fetchPendingCount()
+    }, [autoAcceptOrders, fetchPendingCount, restaurantInfo, supabase])
+
+    const checkPendingOrdersFallback = useCallback(async () => {
+        const { data: pendingOrders } = await supabase
+            .from('orders')
+            .select(`
+                id,
+                order_number,
+                customer_name,
+                customer_phone,
+                customer_address,
+                items_total,
+                delivery_fee,
+                tax_amount,
+                total_amount,
+                payment_method,
+                payment_status,
+                created_at
+            `)
+            .eq('restaurant_id', restaurantId)
+            .eq('status', 'pending')
+            .order('created_at', { ascending: false })
+            .limit(10)
+
+        if (!pendingOrders?.length) return
+
+        for (const pendingOrder of pendingOrders) {
+            if (!processedOrderIdsRef.current.has(pendingOrder.id)) {
+                await processIncomingOrder(pendingOrder as NewOrder)
+                break
+            }
+        }
+    }, [restaurantId, processIncomingOrder, supabase])
+
     useEffect(() => {
         if (!restaurantId) return
 
         void fetchPendingCount()
+        void checkPendingOrdersFallback()
 
         const channel = supabase
             .channel(`global-restaurant-orders-${restaurantId}`)
@@ -107,51 +194,7 @@ export function GlobalNewOrderListener({
                 },
                 async (payload) => {
                     const incomingOrder = payload.new as NewOrder
-                    const { data: items } = await supabase
-                        .from('order_items')
-                        .select('id, name, price, quantity')
-                        .eq('order_id', incomingOrder.id)
-
-                    const orderWithItems = {
-                        ...incomingOrder,
-                        order_items: items || [],
-                    }
-
-                    if (autoAcceptOrders) {
-                        const result = await acceptOrder(orderWithItems.id)
-                        if (result.error) {
-                            toast.error(`Auto-accept failed for ${orderWithItems.order_number}`)
-                        } else {
-                            const printed = printThermalBill(restaurantInfo, {
-                                ...orderWithItems,
-                                items_total: Number((orderWithItems as any).items_total || orderWithItems.total_amount || 0),
-                                delivery_fee: Number((orderWithItems as any).delivery_fee || 0),
-                                tax_amount: Number((orderWithItems as any).tax_amount || 0),
-                                payment_status: (orderWithItems as any).payment_status || 'pending',
-                            })
-                            const kotPrinted = printThermalKot(restaurantInfo, {
-                                ...orderWithItems,
-                                items_total: Number((orderWithItems as any).items_total || orderWithItems.total_amount || 0),
-                                delivery_fee: Number((orderWithItems as any).delivery_fee || 0),
-                                tax_amount: Number((orderWithItems as any).tax_amount || 0),
-                                payment_status: (orderWithItems as any).payment_status || 'pending',
-                            })
-                            if (!printed) {
-                                toast.warning('Auto-accepted. Please enable popups to print or save as PDF.')
-                            }
-                            if (!kotPrinted) {
-                                toast.warning('Auto-accepted. Please enable popups to print KOT.')
-                            }
-                            if (printed || kotPrinted) {
-                                toast.success(`Auto-accepted ${orderWithItems.order_number} and opened bill print.`)
-                            }
-                        }
-                    } else {
-                        setNewOrder(orderWithItems)
-                        setShowNewOrderModal(true)
-                    }
-
-                    void fetchPendingCount()
+                    await processIncomingOrder(incomingOrder)
                 }
             )
             .on(
@@ -180,10 +223,30 @@ export function GlobalNewOrderListener({
             )
             .subscribe()
 
+        const fallbackInterval = window.setInterval(() => {
+            void checkPendingOrdersFallback()
+        }, 10000)
+
+        const handleVisibility = () => {
+            if (document.visibilityState === 'visible') {
+                void checkPendingOrdersFallback()
+                void fetchPendingCount()
+            }
+        }
+        document.addEventListener('visibilitychange', handleVisibility)
+
         return () => {
             supabase.removeChannel(channel)
+            window.clearInterval(fallbackInterval)
+            document.removeEventListener('visibilitychange', handleVisibility)
         }
-    }, [restaurantId, supabase, fetchPendingCount, autoAcceptOrders, restaurantInfo])
+    }, [
+        restaurantId,
+        supabase,
+        fetchPendingCount,
+        checkPendingOrdersFallback,
+        processIncomingOrder,
+    ])
 
     useEffect(() => {
         if (pendingCount <= 0) {

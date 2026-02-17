@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { MapPin, ChevronDown, User, LogIn } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -21,6 +21,19 @@ export function CustomerHeader({ restaurant, user }: CustomerHeaderProps) {
     const [showAddressSelector, setShowAddressSelector] = useState(false)
     const [showProfileSidebar, setShowProfileSidebar] = useState(false)
     const { currentLocation, selectedAddress, isDetecting } = useLocation()
+    const BG_SLOT_MS = 10 * 60 * 1000
+    const headerBgOptions = useMemo(
+        () => [
+            'bg-[#0b5d66]',
+            'bg-[#0b4b63]',
+            'bg-[#123d66]',
+            'bg-[#1c3a63]',
+        ],
+        []
+    )
+    const [bgIndex, setBgIndex] = useState(
+        () => Math.floor(Date.now() / BG_SLOT_MS) % headerBgOptions.length
+    )
 
     // Build location display text
     let locationDisplay = 'Select location'
@@ -36,60 +49,57 @@ export function CustomerHeader({ restaurant, user }: CustomerHeaderProps) {
         locationDisplay = currentLocation.locality
     }
 
+    useEffect(() => {
+        const id = window.setInterval(() => {
+            setBgIndex(Math.floor(Date.now() / BG_SLOT_MS) % headerBgOptions.length)
+        }, 60 * 1000)
+        return () => window.clearInterval(id)
+    }, [headerBgOptions.length])
+
     return (
         <>
-            <header className="sticky top-0 z-40 bg-background border-b">
-                <div className="w-full max-w-7xl mx-auto px-3 sm:px-4 py-2 flex items-center justify-between gap-2">
-                    {/* Logo & Name - Hidden on mobile */}
-                    <div className="hidden md:flex items-center gap-3 min-w-0 flex-shrink">
-                        {restaurant.logo_url && (
-                            <img
-                                src={restaurant.logo_url}
-                                alt={restaurant.name}
-                                className="h-10 w-10 rounded-full object-cover flex-shrink-0"
-                            />
-                        )}
-                        <h1 className="font-bold text-lg truncate">{restaurant.name}</h1>
-                    </div>
-
-                    {/* Location Display - Wraps on mobile, no box */}
-                    <button
-                        onClick={() => setShowAddressSelector(true)}
-                        className="flex items-start gap-1.5 flex-1 md:flex-initial md:max-w-xs min-w-0 text-left"
-                    >
-                        <MapPin className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-muted-foreground" />
-                        <div className="flex-1 min-w-0">
-                            <p className="text-xs leading-tight text-foreground line-clamp-2 break-words">
-                                {isDetecting ? 'Detecting location...' : locationDisplay}
-                            </p>
+            <header className={`relative z-30 overflow-hidden text-white transition-colors duration-700 ${headerBgOptions[bgIndex]}`}>
+                <div className="relative w-full max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-5 min-h-[74px] flex items-center justify-between gap-3">
+                    <div className="flex flex-1 min-w-0 items-start gap-2">
+                        <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0 text-white/80" />
+                        <div className="min-w-0">
+                            <p className="text-[10px] uppercase tracking-[0.12em] text-white/70">Deliver to</p>
+                            <button
+                                onClick={() => setShowAddressSelector(true)}
+                                className="mt-0.5 inline-flex items-center gap-1 text-left"
+                            >
+                                <span className="text-[15px] leading-tight text-white line-clamp-1 break-words font-medium">
+                                    {isDetecting ? 'Detecting location...' : locationDisplay}
+                                </span>
+                                <ChevronDown className="h-4 w-4 flex-shrink-0 text-white/80" />
+                            </button>
                         </div>
-                        <ChevronDown className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-muted-foreground hidden sm:block" />
-                    </button>
+                    </div>
 
                     {/* Login / Profile */}
                     {user ? (
                         <Button
-                            variant="ghost"
+                            variant="secondary"
                             size="icon"
                             onClick={() => setShowProfileSidebar(true)}
-                            className="flex-shrink-0 h-9 w-9"
+                            className="flex-shrink-0 h-10 w-10 rounded-full bg-white/15 text-white hover:bg-white/25"
                         >
                             {user.user_metadata?.avatar_url ? (
                                 <img
                                     src={user.user_metadata.avatar_url}
                                     alt={user.user_metadata?.full_name || 'User'}
-                                    className="h-7 w-7 rounded-full"
+                                    className="h-8 w-8 rounded-full object-cover"
                                 />
                             ) : (
-                                <User className="h-4 w-4" />
+                                <User className="h-5 w-5" />
                             )}
                         </Button>
                     ) : (
                         <Button
                             asChild
-                            variant="default"
+                            variant="secondary"
                             size="sm"
-                            className="flex-shrink-0 h-9 px-3"
+                            className="flex-shrink-0 h-10 px-3 bg-white/15 text-white hover:bg-white/25"
                         >
                             <Link href="/login">
                                 <LogIn className="h-3.5 w-3.5 sm:mr-2" />
