@@ -11,6 +11,7 @@ import { CartDrawer } from './cart-drawer'
 import { CustomerHeader } from './customer-header'
 import { LocationInitializer } from './location-initializer'
 import { useCart } from '@/hooks/use-cart'
+import { createClient } from '@/lib/supabase/client'
 import { User } from '@supabase/supabase-js'
 import Link from 'next/link'
 
@@ -72,6 +73,8 @@ interface BuyAgainItem {
     id: string
     name: string
     orderCount: number
+    totalQuantity?: number
+    lastOrderedAt?: string | null
 }
 
 interface RestaurantMenuProps {
@@ -79,22 +82,25 @@ interface RestaurantMenuProps {
     categories: Category[]
     menuItems: MenuItem[]
     buyAgainItems?: BuyAgainItem[]
-    activeOrder?: {
+    activeOrders?: Array<{
         id: string
         status: string
-    } | null
+        order_number?: string | null
+    }>
     user?: User | null
-    mode?: 'home' | 'menu'
+    mode?: 'home' | 'menu' | 'buy-again'
 }
 
 type FilterType = 'all' | 'veg' | 'nonveg' | 'spicy' | 'bestseller'
 type SortType = 'popular' | 'price_asc' | 'price_desc' | 'prep_asc'
 
-export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItems = [], activeOrder = null, user, mode = 'home' }: RestaurantMenuProps) {
+export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItems = [], activeOrders = [], user, mode = 'home' }: RestaurantMenuProps) {
     const [searchQuery, setSearchQuery] = useState('')
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
     const [isCartOpen, setIsCartOpen] = useState(false)
-    const [activeBottomTab, setActiveBottomTab] = useState<'home' | 'menu' | 'buy-again'>(mode === 'menu' ? 'menu' : 'home')
+    const [activeBottomTab, setActiveBottomTab] = useState<'home' | 'menu' | 'buy-again'>(
+        mode === 'menu' ? 'menu' : mode === 'buy-again' ? 'buy-again' : 'home'
+    )
     const [filterType, setFilterType] = useState<FilterType>('all')
     const [sortType, setSortType] = useState<SortType>('popular')
     const [isFilterOpen, setIsFilterOpen] = useState(false)
@@ -102,6 +108,8 @@ export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItem
     const [openCategoryIds, setOpenCategoryIds] = useState<Set<string>>(new Set())
     const [featuredIndex, setFeaturedIndex] = useState(0)
     const [compactStickyTabs, setCompactStickyTabs] = useState(false)
+    const [activeOrderIndex, setActiveOrderIndex] = useState(0)
+    const [liveActiveOrders, setLiveActiveOrders] = useState(activeOrders)
     const BG_SLOT_MS = 10 * 60 * 1000
     const topBgOptions = useMemo(
         () => [
@@ -146,6 +154,13 @@ export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItem
         }
         return map
     }, [buyAgainItems])
+    const buyAgainDetailsMap = useMemo(() => {
+        const map = new Map<string, BuyAgainItem>()
+        for (const item of buyAgainItems) {
+            map.set(item.id, item)
+        }
+        return map
+    }, [buyAgainItems])
 
     const filteredItems = useMemo(() => {
         const result = menuItems.filter((item) => {
@@ -187,7 +202,7 @@ export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItem
     })).filter((group) => group.items.length > 0)
 
     const uncategorizedItems = filteredItems.filter((item) => !item.category_id)
-    const buyAgainMenuItems = menuItems.filter((item) => buyAgainMap.has(item.id)).slice(0, 10)
+    const buyAgainMenuItems = menuItems.filter((item) => buyAgainMap.has(item.id))
     const showcaseItems = filteredItems.slice(0, 8)
 
     const cartItemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0)
@@ -210,7 +225,8 @@ export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItem
                 ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(restaurantAddress)}`
                 : null
     const activeOrderStatusLabel = useMemo(() => {
-        if (!activeOrder?.status) return null
+        const current = liveActiveOrders[activeOrderIndex]
+        if (!current?.status) return null
         const map: Record<string, string> = {
             pending: 'Order placed',
             confirmed: 'Order confirmed',
@@ -218,8 +234,9 @@ export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItem
             ready: 'Order is ready',
             out_for_delivery: 'Order is on the way',
         }
-        return map[activeOrder.status] || 'Order update'
-    }, [activeOrder?.status])
+        return map[current.status] || 'Order update'
+    }, [liveActiveOrders, activeOrderIndex])
+    const currentActiveOrder = liveActiveOrders[activeOrderIndex]
 
     const scrollToSection = (type: 'home' | 'menu' | 'buy-again') => {
         setActiveBottomTab(type)
@@ -270,6 +287,10 @@ export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItem
             setActiveBottomTab('menu')
             return
         }
+        if (mode === 'buy-again') {
+            setActiveBottomTab('buy-again')
+            return
+        }
         const sectionPairs: Array<{ key: 'home' | 'menu' | 'buy-again'; el: HTMLDivElement }> = []
         if (homeRef.current) sectionPairs.push({ key: 'home', el: homeRef.current })
         if (menuRef.current) sectionPairs.push({ key: 'menu', el: menuRef.current })
@@ -308,20 +329,89 @@ export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItem
         setOpenCategoryIds(new Set(itemsByCategory.map(({ category }) => category.id)))
     }, [mode, itemsByCategory])
 
+    useEffect(() => {
+        if (liveActiveOrders.length <= 1) return
+        const interval = window.setInterval(() => {
+            setActiveOrderIndex((prev) => (prev + 1) % liveActiveOrders.length)
+        }, 3500)
+        return () => window.clearInterval(interval)
+    }, [liveActiveOrders.length])
+
+    useEffect(() => {
+        if (activeOrderIndex >= liveActiveOrders.length) {
+            setActiveOrderIndex(0)
+        }
+    }, [activeOrderIndex, liveActiveOrders.length])
+
+    useEffect(() => {
+        setLiveActiveOrders(activeOrders)
+    }, [activeOrders])
+
+    useEffect(() => {
+        if (!user?.id) return
+
+        const supabase = createClient()
+        const allowedStatuses = ['pending', 'confirmed', 'preparing', 'ready', 'out_for_delivery']
+
+        const loadActiveOrders = async () => {
+            const { data } = await supabase
+                .from('orders')
+                .select('id, status, order_number')
+                .eq('user_id', user.id)
+                .in('status', allowedStatuses)
+                .order('created_at', { ascending: false })
+                .limit(5)
+
+            setLiveActiveOrders((data || []).map((order) => ({
+                id: order.id,
+                status: order.status,
+                order_number: order.order_number,
+            })))
+        }
+
+        void loadActiveOrders()
+
+        const channel = supabase
+            .channel(`customer-active-orders-${user.id}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'orders',
+                    filter: `user_id=eq.${user.id}`,
+                },
+                () => {
+                    void loadActiveOrders()
+                }
+            )
+            .subscribe()
+
+        return () => {
+            supabase.removeChannel(channel)
+        }
+    }, [user?.id])
+
     return (
-        <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/20">
+        <div className="mx-auto min-h-screen w-full max-w-lg bg-gradient-to-b from-background via-background to-muted/20 md:shadow-[0_0_0_1px_hsl(var(--border)),0_18px_45px_-20px_rgba(0,0,0,0.45)]">
             <LocationInitializer userId={user?.id} />
             {mode === 'home' ? <CustomerHeader restaurant={restaurant} user={user} /> : null}
 
             {restaurant.is_online === false && (
                 <div className="bg-amber-50 border-b border-amber-200">
-                    <div className="container max-w-7xl mx-auto px-4 py-2 text-sm text-amber-800">
+                    <div className="mx-auto w-full px-4 py-2 text-sm text-amber-800">
                         This restaurant is currently offline. You can browse the menu, but orders are temporarily disabled.
                     </div>
                 </div>
             )}
 
-            <main className="container mx-auto max-w-7xl px-4 pb-32 pt-0">
+            <main className={`mx-auto w-full px-4 pt-0 ${
+                cartItemCount > 0 && currentActiveOrder
+                    ? 'pb-56'
+                    : cartItemCount > 0 || currentActiveOrder
+                        ? 'pb-44'
+                        : 'pb-32'
+            }`}>
                 <section className={`sticky top-0 z-30 -mx-4 overflow-hidden px-4 pb-5 pt-3 transition-colors duration-700 ${mode === 'home' ? topBgOptions[bgIndex] : 'bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80'}`}>
                     <div className="relative">
                     <div className="flex gap-2">
@@ -498,7 +588,7 @@ export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItem
                     </section>
                 ) : null}
 
-                <section ref={menuRef} className={mode === 'menu' ? 'pt-4' : ''}>
+                <section ref={menuRef} className={mode === 'menu' || mode === 'buy-again' ? 'pt-4' : ''}>
                     {mode === 'home' ? (
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
@@ -510,9 +600,38 @@ export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItem
                             {showcaseItems.length === 0 ? (
                                 <div className="py-8 text-center text-sm text-muted-foreground">No items found for selected filters.</div>
                             ) : (
-                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                <div className="grid grid-cols-1 gap-3">
                                     {showcaseItems.map((item) => (
                                         <MenuItemCard key={item.id} item={item} />
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    ) : mode === 'buy-again' ? (
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-lg font-semibold">Buy Again</h3>
+                                <Badge variant="secondary">{buyAgainMenuItems.length} items</Badge>
+                            </div>
+                            {buyAgainMenuItems.length === 0 ? (
+                                <div className="py-12 text-center text-muted-foreground">
+                                    No previous items from this restaurant yet.
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 gap-3">
+                                    {buyAgainMenuItems.map((item) => (
+                                        <div key={`buy-again-page-${item.id}`} className="space-y-1">
+                                            <MenuItemCard item={item} />
+                                            <p className="px-1 text-xs text-muted-foreground">
+                                                Ordered {buyAgainDetailsMap.get(item.id)?.orderCount || 0} times
+                                                {buyAgainDetailsMap.get(item.id)?.totalQuantity
+                                                    ? ` • Qty ${buyAgainDetailsMap.get(item.id)?.totalQuantity}`
+                                                    : ''}
+                                                {buyAgainDetailsMap.get(item.id)?.lastOrderedAt
+                                                    ? ` • Last ordered ${new Date(buyAgainDetailsMap.get(item.id)!.lastOrderedAt!).toLocaleDateString()}`
+                                                    : ''}
+                                            </p>
+                                        </div>
                                     ))}
                                 </div>
                             )}
@@ -547,7 +666,7 @@ export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItem
                                                     {items.length} item{items.length > 1 ? 's' : ''} {openCategoryIds.has(category.id) ? '▲' : '▼'}
                                                 </span>
                                             </button>
-                                            <div className={openCategoryIds.has(category.id) ? 'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3' : 'hidden'}>
+                                            <div className={openCategoryIds.has(category.id) ? 'grid grid-cols-1 gap-3' : 'hidden'}>
                                                 {items.map((item) => (
                                                     <MenuItemCard key={item.id} item={item} />
                                                 ))}
@@ -558,7 +677,7 @@ export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItem
                                     {uncategorizedItems.length > 0 && (
                                         <section className="space-y-3 border-b border-border/60 pb-5">
                                             <h3 className="text-lg font-semibold tracking-tight">Other Items</h3>
-                                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                            <div className="grid grid-cols-1 gap-3">
                                                 {uncategorizedItems.map((item) => (
                                                     <MenuItemCard key={item.id} item={item} />
                                                 ))}
@@ -627,15 +746,28 @@ export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItem
                 )}
             </main>
 
-            {activeOrder && (
-                <div className={`fixed left-0 right-0 z-50 px-4 ${cartItemCount > 0 ? 'bottom-36' : 'bottom-20'}`}>
+            {currentActiveOrder && (
+                <div className={`fixed left-1/2 z-40 w-full max-w-lg -translate-x-1/2 px-4 ${cartItemCount > 0 ? 'bottom-36' : 'bottom-20'}`}>
                     <Link
-                        href={`/orders/${activeOrder.id}`}
-                        className="mx-auto flex h-14 w-full max-w-md items-center justify-between rounded-2xl bg-slate-800/95 px-4 text-white shadow-lg backdrop-blur"
+                        href={`/orders/${currentActiveOrder.id}`}
+                        className="mx-auto flex h-14 w-full items-center justify-between rounded-2xl bg-slate-800/95 px-4 text-white shadow-lg backdrop-blur"
                     >
-                        <p className="truncate text-sm font-medium">
-                            {activeOrderStatusLabel}
-                        </p>
+                        <div className="min-w-0">
+                            <p className="truncate text-sm font-medium">{activeOrderStatusLabel}</p>
+                            <p className="truncate text-[11px] text-white/70">
+                                Order #{currentActiveOrder.order_number || currentActiveOrder.id.slice(0, 8)}
+                            </p>
+                            {liveActiveOrders.length > 1 ? (
+                                <div className="mt-1 flex gap-1">
+                                    {liveActiveOrders.map((order, idx) => (
+                                        <span
+                                            key={order.id}
+                                            className={`h-1.5 rounded-full ${idx === activeOrderIndex ? 'w-4 bg-white' : 'w-1.5 bg-white/40'}`}
+                                        />
+                                    ))}
+                                </div>
+                            ) : null}
+                        </div>
                         <span className="flex items-center gap-1 text-sm font-semibold">
                             View
                             <ChevronRight className="h-4 w-4" />
@@ -645,11 +777,11 @@ export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItem
             )}
 
             {cartItemCount > 0 && (
-                <div className="fixed bottom-20 left-0 right-0 z-50 px-4">
+                <div className="fixed bottom-20 left-1/2 z-40 w-full max-w-lg -translate-x-1/2 px-4">
                     <button
                         type="button"
                         onClick={() => setIsCartOpen(true)}
-                        className="mx-auto flex h-14 w-full max-w-md items-center justify-between rounded-2xl bg-slate-900/95 px-3.5 text-white shadow-lg backdrop-blur"
+                        className="mx-auto flex h-14 w-full items-center justify-between rounded-2xl bg-slate-900/95 px-3.5 text-white shadow-lg backdrop-blur"
                     >
                         <div className="flex min-w-0 items-center gap-3">
                             <div className="flex -space-x-2">
@@ -678,16 +810,16 @@ export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItem
                 </div>
             )}
 
-            <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 shadow-[0_-8px_24px_rgba(0,0,0,0.08)] backdrop-blur">
-                <div className="mx-auto grid h-16 max-w-md grid-cols-3 px-2">
+            <nav className="fixed bottom-0 left-1/2 z-50 w-full max-w-lg -translate-x-1/2 border-t bg-background/95 shadow-[0_-8px_24px_rgba(0,0,0,0.08)] backdrop-blur">
+                <div className="mx-auto grid h-16 w-full grid-cols-3 px-2">
                     <button
                         onClick={() => {
-                            if (mode === 'menu') return
+                            if (mode !== 'home') return
                             scrollToSection('home')
                         }}
                         className={`flex flex-col items-center justify-center text-xs ${activeBottomTab === 'home' ? 'text-primary' : 'text-muted-foreground'}`}
                     >
-                        {mode === 'menu' ? (
+                        {mode !== 'home' ? (
                             <Link href={`/r/${restaurant.slug}`} className="flex flex-col items-center">
                                 <House className="mb-1 h-4 w-4" />
                                 Home
@@ -701,12 +833,12 @@ export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItem
                     </button>
                     <button
                         onClick={() => {
-                            if (mode === 'home') return
+                            if (mode !== 'menu') return
                             scrollToSection('menu')
                         }}
                         className={`flex flex-col items-center justify-center text-xs ${activeBottomTab === 'menu' ? 'text-primary' : 'text-muted-foreground'}`}
                     >
-                        {mode === 'home' ? (
+                        {mode !== 'menu' ? (
                             <Link href={`/r/${restaurant.slug}/menu`} className="flex flex-col items-center">
                                 <UtensilsCrossed className="mb-1 h-4 w-4" />
                                 Menu
@@ -719,11 +851,23 @@ export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItem
                         )}
                     </button>
                     <button
-                        onClick={() => scrollToSection('buy-again')}
+                        onClick={() => {
+                            if (mode !== 'buy-again') return
+                            scrollToSection('buy-again')
+                        }}
                         className={`flex flex-col items-center justify-center text-xs ${activeBottomTab === 'buy-again' ? 'text-primary' : 'text-muted-foreground'}`}
                     >
-                        <RotateCcw className="mb-1 h-4 w-4" />
-                        Buy Again
+                        {mode !== 'buy-again' ? (
+                            <Link href={`/r/${restaurant.slug}/buy-again`} className="flex flex-col items-center">
+                                <RotateCcw className="mb-1 h-4 w-4" />
+                                Buy Again
+                            </Link>
+                        ) : (
+                            <>
+                                <RotateCcw className="mb-1 h-4 w-4" />
+                                Buy Again
+                            </>
+                        )}
                     </button>
                 </div>
             </nav>

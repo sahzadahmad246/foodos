@@ -8,14 +8,11 @@ interface PageProps {
     params: Promise<{ slug: string }>
 }
 
-export default async function RestaurantPage({ params }: PageProps) {
+export default async function RestaurantBuyAgainPage({ params }: PageProps) {
     const { slug } = await params
     const supabase = await createClient()
-
-    // Get current user (optional, for logged-in experience)
     const { data: { user } } = await supabase.auth.getUser()
 
-    // Fetch restaurant by slug
     const { data: restaurant } = await supabase
         .from("restaurants")
         .select("*")
@@ -26,7 +23,6 @@ export default async function RestaurantPage({ params }: PageProps) {
         notFound()
     }
 
-    // Fetch categories
     const { data: categories } = await supabase
         .from("categories")
         .select("*")
@@ -34,7 +30,6 @@ export default async function RestaurantPage({ params }: PageProps) {
         .eq("is_active", true)
         .order("sort_order", { ascending: true })
 
-    // Fetch menu items
     const { data: menuItems } = await supabase
         .from("menu_items")
         .select("*")
@@ -42,9 +37,9 @@ export default async function RestaurantPage({ params }: PageProps) {
         .eq("is_available", true)
         .order("sort_order", { ascending: true })
 
-    // Buy again items for logged-in customer (recent delivered orders from this restaurant)
     let buyAgainItems: Array<{ id: string; name: string; orderCount: number; totalQuantity: number; lastOrderedAt: string | null }> = []
     let activeOrders: Array<{ id: string; status: string; order_number?: string | null }> = []
+
     if (user?.id) {
         const { data: latestActiveOrders } = await supabase
             .from("orders")
@@ -91,7 +86,7 @@ export default async function RestaurantPage({ params }: PageProps) {
                     }
                 } else {
                     counts.set(id, {
-                        id: item.menu_item_id || '',
+                        id: item.menu_item_id || "",
                         name: item.name,
                         orderCount: 1,
                         totalQuantity: Number(item.quantity || 0),
@@ -119,7 +114,7 @@ export default async function RestaurantPage({ params }: PageProps) {
             buyAgainItems={buyAgainItems}
             activeOrders={activeOrders}
             user={user}
-            mode="home"
+            mode="buy-again"
         />
     )
 }
