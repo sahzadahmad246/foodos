@@ -8,6 +8,7 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-serif: var(--font-display), ui-serif, Georgia, serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -159,4 +160,55 @@
 
 .animate-status-active {
   animation: status-pulse 1.5s ease-in-out infinite;
+}
+
+/* Rider COD collect-payment reminder */
+@keyframes rider-collect-wave {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(250%);
+  }
+}
+
+.rider-collect-pending::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 55%;
+  pointer-events: none;
+  z-index: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(253 224 71 / 0.18) 30%,
+    rgb(251 191 36 / 0.32) 50%,
+    rgb(252 211 77 / 0.18) 70%,
+    transparent 100%
+  );
+  animation: rider-collect-wave 2.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rider-collect-pending::after {
+    animation: none;
+    width: 100%;
+    background: rgb(251 191 36 / 0.12);
+  }
+}
+
+@keyframes landing-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.landing-marquee-track {
+  animation: landing-marquee 32s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-marquee-track {
+    animation: none;
+  }
 }

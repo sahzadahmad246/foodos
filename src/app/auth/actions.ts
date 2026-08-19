@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { getSiteUrl } from '@/lib/site-url'
 
 async function getPostAuthRedirectPath() {
     const supabase = await createClient()
@@ -80,7 +81,7 @@ export async function signInWithGoogle(): Promise<{ error?: string; success?: st
     const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-            redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback`,
+            redirectTo: `${await getSiteUrl()}/auth/callback`,
         },
     })
 

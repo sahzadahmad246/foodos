@@ -564,14 +564,38 @@ export function RiderOrderDetail({ order, riderId }: RiderOrderDetailProps) {
                                     </div>
 
                                     {isOnTheWay && (
-                                        <label className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                                        <label
+                                            className={`relative flex items-center gap-3 p-3 rounded-xl border cursor-pointer overflow-hidden ${
+                                                paymentCollected
+                                                    ? 'border-emerald-300 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/30'
+                                                    : 'border-amber-300 bg-white dark:border-amber-600 dark:bg-gray-900'
+                                            }`}
+                                        >
+                                            {!paymentCollected && (
+                                                <>
+                                                    <style>{`
+                                                        @keyframes rider-collect-wave {
+                                                            0% { transform: translateX(-100%); }
+                                                            100% { transform: translateX(280%); }
+                                                        }
+                                                    `}</style>
+                                                    <span
+                                                        aria-hidden
+                                                        className="pointer-events-none absolute top-0 bottom-0 left-0 w-[55%] z-0"
+                                                        style={{
+                                                            background: 'linear-gradient(90deg, transparent 0%, rgba(253,224,71,0.18) 30%, rgba(251,191,36,0.32) 50%, rgba(252,211,77,0.18) 70%, transparent 100%)',
+                                                            animation: 'rider-collect-wave 2.6s ease-in-out infinite',
+                                                        }}
+                                                    />
+                                                </>
+                                            )}
                                             <Checkbox
                                                 id="payment-collected"
                                                 checked={paymentCollected}
                                                 onCheckedChange={(checked) => setPaymentCollected(checked === true)}
-                                                className="h-5 w-5"
+                                                className="relative z-10 h-5 w-5"
                                             />
-                                            <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                            <span className="relative z-10 text-sm font-medium text-gray-900 dark:text-white">
                                                 I have collected ₹{order.total_amount}
                                             </span>
                                         </label>

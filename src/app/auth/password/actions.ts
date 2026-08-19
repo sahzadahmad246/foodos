@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { getSiteUrl } from '@/lib/site-url'
 
 export async function forgotPassword(formData: FormData): Promise<{ error?: string; success?: string }> {
     const supabase = await createClient()
@@ -14,7 +15,7 @@ export async function forgotPassword(formData: FormData): Promise<{ error?: stri
     // but Supabase's default behavior already doesn't send to non-existent emails
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/confirm`,
+        redirectTo: `${await getSiteUrl()}/auth/confirm`,
     })
 
     if (error) {
