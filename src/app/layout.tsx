@@ -10,6 +10,13 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 const playfair = Playfair_Display({ variable: "--font-playfair", subsets: ["latin"] });
 
+const newsreader = Newsreader({
+  variable: "--font-display",
+  subsets: ["latin"],
+  display: "swap",
+  style: ["normal", "italic"],
+});
+
 export const metadata: Metadata = {
   title: "foodOS — The operating system for modern restaurants",
   description: "Run a tighter ship and serve more joy with foodOS — the all-in-one restaurant platform for orders, menus, kitchen flow, and business insights.",

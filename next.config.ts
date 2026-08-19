@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
+  // Allow Cloudinary-hosted images through next/image.
   images: {
     remotePatterns: [
       {

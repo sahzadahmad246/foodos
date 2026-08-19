@@ -23,6 +23,7 @@ interface LocationMapModalProps {
     onClose: () => void
     initialLocation?: { latitude: number; longitude: number; locality: string | null } | null
     onLocationSelected?: (location: { latitude: number; longitude: number; locality: string | null }) => void
+    embedded?: boolean
 }
 
 function LocationMarker({ position, onPositionChange }: any) {
@@ -41,7 +42,7 @@ function LocationMarker({ position, onPositionChange }: any) {
     }} /> : null
 }
 
-export function LocationMapModal({ open, onClose, initialLocation, onLocationSelected }: LocationMapModalProps) {
+export function LocationMapModal({ open, onClose, initialLocation, onLocationSelected, embedded = false }: LocationMapModalProps) {
     const [position, setPosition] = useState<[number, number] | null>(
         initialLocation ? [initialLocation.latitude, initialLocation.longitude] : null
     )
@@ -50,7 +51,7 @@ export function LocationMapModal({ open, onClose, initialLocation, onLocationSel
     const { setCurrentLocation } = useLocation()
 
     useEffect(() => {
-        if (open && !position) {
+        if ((open || embedded) && !position) {
             // Auto-detect location when modal opens
             if ('geolocation' in navigator) {
                 setIsLoading(true)
@@ -102,9 +103,8 @@ export function LocationMapModal({ open, onClose, initialLocation, onLocationSel
         }
     }
 
-    return (
-        <Dialog open={open} onOpenChange={onClose}>
-            <DialogContent className="max-w-lg p-0 gap-0">
+    const content = (
+        <>
                 <DialogHeader className="p-4 pb-3 border-b">
                     <DialogTitle className="flex items-center gap-2 text-base">
                         <MapPin className="h-4 w-4" />
@@ -146,13 +146,15 @@ export function LocationMapModal({ open, onClose, initialLocation, onLocationSel
 
                 <div className="p-4 pt-3 border-t">
                     <div className="flex gap-2">
-                        <Button variant="outline" onClick={onClose} className="flex-1" size="sm">
-                            Cancel
-                        </Button>
+                        {!embedded ? (
+                            <Button variant="outline" onClick={onClose} className="flex-1" size="sm">
+                                Cancel
+                            </Button>
+                        ) : null}
                         <Button
                             onClick={handleConfirm}
                             disabled={!position || isLoading}
-                            className="flex-1"
+                            className={embedded ? "w-full" : "flex-1"}
                             size="sm"
                         >
                             {isLoading && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
@@ -160,6 +162,17 @@ export function LocationMapModal({ open, onClose, initialLocation, onLocationSel
                         </Button>
                     </div>
                 </div>
+        </>
+    )
+
+    if (embedded) {
+        return <div className="overflow-hidden bg-white">{content}</div>
+    }
+
+    return (
+        <Dialog open={open} onOpenChange={onClose}>
+            <DialogContent className="max-w-lg p-0 gap-0">
+                {content}
             </DialogContent>
         </Dialog>
     )

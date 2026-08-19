@@ -1,7 +1,7 @@
 'use client'
 
-import React, { useEffect, useRef, useState } from 'react'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { useEffect, useRef, useState } from 'react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -11,6 +11,7 @@ import {
 import { acceptOrder, rejectOrder } from '../actions/order-actions'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
+import { printThermalBill, printThermalKot, type BillRestaurantInfo } from './thermal-bill'
 
 interface OrderItem {
     id: string
@@ -25,8 +26,12 @@ interface NewOrder {
     customer_name: string
     customer_phone: string | null
     customer_address: string | null
+    items_total?: number
+    delivery_fee?: number
+    tax_amount?: number
     total_amount: number
     payment_method: string
+    payment_status?: string
     created_at: string
     order_items?: OrderItem[]
 }
@@ -35,28 +40,28 @@ interface NewOrderModalProps {
     order: NewOrder | null
     open: boolean
     onClose: () => void
+    restaurantInfo: BillRestaurantInfo
 }
 
-export function NewOrderModal({ order, open, onClose }: NewOrderModalProps) {
+export function NewOrderModal({ order, open, onClose, restaurantInfo }: NewOrderModalProps) {
     const router = useRouter()
     const audioRef = useRef<HTMLAudioElement | null>(null)
-    const [isAccepting, setIsAccepting] = React.useState(false)
-    const [isRejecting, setIsRejecting] = React.useState(false)
+    const [isAccepting, setIsAccepting] = useState(false)
+    const [isRejecting, setIsRejecting] = useState(false)
 
     // Play notification sound when modal opens
     useEffect(() => {
         if (open && order) {
-            // Create and play sound
             if (!audioRef.current) {
-                audioRef.current = new Audio('/sounds/new-order.mp3')
+                audioRef.current = new Audio('/alert.mp3')
                 audioRef.current.loop = true
+                audioRef.current.preload = 'auto'
             }
-            audioRef.current.play().catch(() => {
-                // Autoplay might be blocked
-                console.log('Audio autoplay blocked')
+
+            void audioRef.current.play().catch(() => {
+                // Browser may block autoplay until first user interaction.
             })
         } else {
-            // Stop sound when modal closes
             if (audioRef.current) {
                 audioRef.current.pause()
                 audioRef.current.currentTime = 0
@@ -70,6 +75,15 @@ export function NewOrderModal({ order, open, onClose }: NewOrderModalProps) {
         }
     }, [open, order])
 
+    useEffect(() => {
+        return () => {
+            if (audioRef.current) {
+                audioRef.current.pause()
+                audioRef.current = null
+            }
+        }
+    }, [])
+
     const handleAccept = async () => {
         if (!order) return
         setIsAccepting(true)
@@ -77,6 +91,26 @@ export function NewOrderModal({ order, open, onClose }: NewOrderModalProps) {
         if (result.error) {
             toast.error(result.error)
         } else {
+            const printed = printThermalBill(restaurantInfo, {
+                ...order,
+                items_total: Number((order as any).items_total || order.total_amount || 0),
+                delivery_fee: Number((order as any).delivery_fee || 0),
+                tax_amount: Number((order as any).tax_amount || 0),
+                payment_status: (order as any).payment_status || 'pending',
+            })
+            const kotPrinted = printThermalKot(restaurantInfo, {
+                ...order,
+                items_total: Number((order as any).items_total || order.total_amount || 0),
+                delivery_fee: Number((order as any).delivery_fee || 0),
+                tax_amount: Number((order as any).tax_amount || 0),
+                payment_status: (order as any).payment_status || 'pending',
+            })
+            if (!printed) {
+                toast.warning('Order accepted. Please enable popups to print or save as PDF.')
+            }
+            if (!kotPrinted) {
+                toast.warning('Order accepted. Please enable popups to print KOT.')
+            }
             toast.success('Order accepted!')
             onClose()
             router.refresh()
@@ -109,6 +143,9 @@ export function NewOrderModal({ order, open, onClose }: NewOrderModalProps) {
     return (
         <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
             <DialogContent className="max-w-md p-0 overflow-hidden border-2 border-primary animate-pulse-border max-h-[90vh] flex flex-col">
+                <DialogHeader className="sr-only">
+                    <DialogTitle>New order notification</DialogTitle>
+                </DialogHeader>
                 {/* Animated Header */}
                 <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground p-6 text-center flex-shrink-0">
                     <div className="animate-bounce mb-2">

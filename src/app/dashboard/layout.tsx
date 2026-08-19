@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { DashboardSidebar } from '@/components/dashboard/sidebar'
 import { DashboardHeader } from '@/components/dashboard/header'
+import { GlobalNewOrderListener } from '@/components/dashboard/orders/global-new-order-listener'
 import { canGoOnline } from '@/lib/profile-completion'
 
 export default async function DashboardLayout({

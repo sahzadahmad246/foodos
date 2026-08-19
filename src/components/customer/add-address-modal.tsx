@@ -6,14 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select'
-import { Loader2, MapPin } from 'lucide-react'
+import { Loader2, MapPin, ArrowLeft, Home, Briefcase, MapPinned } from 'lucide-react'
 import { saveAddress, updateAddress } from '@/lib/address-utils'
 import { reverseGeocode } from '@/lib/geocoding'
 import { toast } from 'sonner'
@@ -63,7 +56,6 @@ const defaultFormData = {
 }
 
 export function AddAddressModal({ open, onClose, onAddressAdded, userId, editAddress }: AddAddressModalProps) {
-    const [showMap, setShowMap] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
     const [formData, setFormData] = useState(defaultFormData)
 
@@ -101,7 +93,6 @@ export function AddAddressModal({ open, onClose, onAddressAdded, userId, editAdd
             state: geocoded?.state || '',
             pincode: geocoded?.pincode || '',
         }))
-        setShowMap(false)
     }
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -153,138 +144,137 @@ export function AddAddressModal({ open, onClose, onAddressAdded, userId, editAdd
     return (
         <>
             <Dialog open={open} onOpenChange={onClose}>
-                <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                        <DialogTitle>{editAddress ? 'Edit Address' : 'Add New Address'}</DialogTitle>
+                <DialogContent className="z-[80] h-[100dvh] w-screen max-w-none overflow-x-hidden overflow-y-auto rounded-none border-0 bg-[#f4f5f7] p-0">
+                    <DialogHeader className="sticky top-0 z-10 border-b bg-white px-4 py-3">
+                        <div className="flex items-center gap-2">
+                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={onClose}>
+                                <ArrowLeft className="h-4 w-4" />
+                            </Button>
+                            <DialogTitle className="text-lg font-semibold">
+                                {editAddress ? 'Edit Address' : 'Add New Address'}
+                            </DialogTitle>
+                        </div>
                     </DialogHeader>
 
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        {/* Person Name */}
-                        <div className="space-y-2">
-                            <Label htmlFor="person_name">Person Name *</Label>
-                            <Input
-                                id="person_name"
-                                value={formData.person_name}
-                                onChange={(e) => setFormData(prev => ({ ...prev, person_name: e.target.value }))}
-                                placeholder="Name of person at this address"
-                                required
-                            />
-                        </div>
+                    <form onSubmit={handleSubmit} className="space-y-4 overflow-x-hidden pb-8">
+                        <LocationMapModal
+                            embedded
+                            open={open}
+                            onClose={() => {}}
+                            onLocationSelected={handleLocationSelected}
+                            initialLocation={formData.latitude ? {
+                                latitude: formData.latitude,
+                                longitude: formData.longitude,
+                                locality: formData.locality,
+                            } : null}
+                        />
 
-                        {/* Mobile Number */}
-                        <div className="space-y-2">
-                            <Label htmlFor="mobile">Mobile Number *</Label>
-                            <Input
-                                id="mobile"
-                                type="tel"
-                                value={formData.mobile}
-                                onChange={(e) => setFormData(prev => ({ ...prev, mobile: e.target.value }))}
-                                placeholder="10-digit mobile number"
-                                maxLength={10}
-                                required
-                            />
-                        </div>
-
-                        {/* Location Selector */}
-                        <div className="space-y-2">
-                            <Label>Location *</Label>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                className="w-full justify-start h-auto py-2 px-3"
-                                onClick={() => setShowMap(true)}
-                            >
-                                <MapPin className="mr-2 h-4 w-4 flex-shrink-0" />
-                                <div className="text-left flex-1 min-w-0">
-                                    {formData.locality ? (
-                                        <>
-                                            <p className="text-sm font-medium truncate">{formData.locality}</p>
-                                            <p className="text-xs text-muted-foreground">
-                                                {formData.latitude.toFixed(5)}, {formData.longitude.toFixed(5)}
+                        <div className="space-y-4 px-4">
+                            <div>
+                                <p className="mb-2 text-sm font-medium text-slate-600">Delivery details</p>
+                                <div className="rounded-2xl border bg-white p-3">
+                                    <div className="flex items-start gap-3">
+                                        <MapPin className="mt-1 h-5 w-5 text-rose-500" />
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-medium text-slate-900">
+                                                {formData.locality || 'Tap on map to select location'}
                                             </p>
-                                        </>
-                                    ) : (
-                                        <p className="text-sm">Select location on map</p>
-                                    )}
+                                            {formData.city ? (
+                                                <p className="mt-0.5 text-xs text-slate-500">
+                                                    {formData.city}, {formData.state} {formData.pincode}
+                                                </p>
+                                            ) : null}
+                                        </div>
+                                    </div>
                                 </div>
-                            </Button>
-                            {formData.city && (
-                                <p className="text-xs text-muted-foreground">
-                                    {formData.city}, {formData.state} - {formData.pincode}
-                                </p>
-                            )}
+                            </div>
+
+                            <div>
+                                <Label htmlFor="flat" className="mb-2 block text-sm text-slate-600">Address details*</Label>
+                                <Input
+                                    id="flat"
+                                    value={formData.flat_building}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, flat_building: e.target.value }))}
+                                    placeholder="E.g. Floor, Flat no., Tower"
+                                    className="h-14 rounded-2xl border-slate-300 bg-white"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <Label htmlFor="landmark" className="mb-2 block text-sm text-slate-600">Landmark (optional)</Label>
+                                <Input
+                                    id="landmark"
+                                    value={formData.landmark || ''}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, landmark: e.target.value }))}
+                                    placeholder="Nearby landmark"
+                                    className="h-12 rounded-2xl border-slate-300 bg-white"
+                                />
+                            </div>
+
+                            <div>
+                                <p className="mb-2 text-sm font-medium text-slate-600">Receiver details for this address</p>
+                                <div className="grid grid-cols-1 gap-2">
+                                    <Input
+                                        id="person_name"
+                                        value={formData.person_name}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, person_name: e.target.value }))}
+                                        placeholder="Person name"
+                                        className="h-12 rounded-2xl border-slate-300 bg-white"
+                                        required
+                                    />
+                                    <Input
+                                        id="mobile"
+                                        type="tel"
+                                        value={formData.mobile}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, mobile: e.target.value }))}
+                                        placeholder="Mobile number"
+                                        maxLength={10}
+                                        className="h-12 rounded-2xl border-slate-300 bg-white"
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <p className="mb-2 text-sm font-medium text-slate-600">Save address as</p>
+                                <div className="flex flex-wrap gap-2">
+                                    {[
+                                        { value: 'home', label: 'Home', icon: Home },
+                                        { value: 'work', label: 'Work', icon: Briefcase },
+                                        { value: 'other', label: 'Other', icon: MapPinned },
+                                    ].map((type) => (
+                                        <button
+                                            key={type.value}
+                                            type="button"
+                                            onClick={() => setFormData(prev => ({ ...prev, address_type: type.value }))}
+                                            className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm ${
+                                                formData.address_type === type.value
+                                                    ? 'border-slate-900 bg-slate-900 text-white'
+                                                    : 'border-slate-300 bg-white text-slate-700'
+                                            }`}
+                                        >
+                                            <type.icon className="h-4 w-4" />
+                                            {type.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
 
-                        {/* Flat/Building */}
-                        <div className="space-y-2">
-                            <Label htmlFor="flat">Flat / Building No. *</Label>
-                            <Input
-                                id="flat"
-                                value={formData.flat_building}
-                                onChange={(e) => setFormData(prev => ({ ...prev, flat_building: e.target.value }))}
-                                placeholder="e.g., Flat 101, Tower A"
-                                required
-                            />
-                        </div>
-
-                        {/* Landmark */}
-                        <div className="space-y-2">
-                            <Label htmlFor="landmark">Landmark (Optional)</Label>
-                            <Input
-                                id="landmark"
-                                value={formData.landmark || ''}
-                                onChange={(e) => setFormData(prev => ({ ...prev, landmark: e.target.value }))}
-                                placeholder="e.g., Near Metro Station"
-                            />
-                        </div>
-
-                        {/* Address Type */}
-                        <div className="space-y-2">
-                            <Label>Address Type</Label>
-                            <Select
-                                value={formData.address_type}
-                                onValueChange={(value) => setFormData(prev => ({ ...prev, address_type: value }))}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="home">🏠 Home</SelectItem>
-                                    <SelectItem value="work">💼 Work</SelectItem>
-                                    <SelectItem value="other">📍 Other</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        {/* Actions */}
-                        <div className="flex gap-3 pt-4">
-                            <Button type="button" variant="outline" onClick={onClose} className="flex-1">
-                                Cancel
-                            </Button>
+                        <div className="mt-2 border-t bg-white p-4">
                             <Button
                                 type="submit"
                                 disabled={isSaving || !isFormValid}
-                                className="flex-1"
+                                className="h-12 w-full rounded-xl bg-slate-900 text-white hover:bg-slate-800"
                             >
                                 {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                {editAddress ? 'Update Address' : 'Save Address'}
+                                {editAddress ? 'Update address' : 'Save address'}
                             </Button>
                         </div>
                     </form>
                 </DialogContent>
             </Dialog>
-
-            {/* Map Modal */}
-            <LocationMapModal
-                open={showMap}
-                onClose={() => setShowMap(false)}
-                onLocationSelected={handleLocationSelected}
-                initialLocation={formData.latitude ? {
-                    latitude: formData.latitude,
-                    longitude: formData.longitude,
-                    locality: formData.locality,
-                } : null}
-            />
         </>
     )
 }

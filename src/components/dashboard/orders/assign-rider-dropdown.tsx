@@ -20,7 +20,7 @@ interface Rider {
     id: string
     name: string
     phone: string
-    status: 'online' | 'offline' | 'on_delivery'
+    status: 'online' | 'offline' | 'on_delivery' | 'delivering' | 'returning'
 }
 
 interface AssignRiderModalProps {
@@ -42,7 +42,7 @@ export function AssignRiderModal({ orderId, restaurantId, currentRiderId, curren
         setIsLoading(true)
         const supabase = createClient()
 
-        // Only fetch available riders (online or on_delivery)
+        // Only fetch assignable riders (online or in pickup phase).
         const { data, error } = await supabase
             .from('riders')
             .select('id, name, phone, status')
@@ -109,7 +109,7 @@ export function AssignRiderModal({ orderId, restaurantId, currentRiderId, curren
 
     // Only online riders can be assigned
     const onlineRiders = filteredRiders.filter(r => r.status === 'online')
-    // On delivery riders are shown but disabled
+    // Pickup phase riders can still be assigned while they are at restaurant.
     const busyRiders = filteredRiders.filter(r => r.status === 'on_delivery')
 
     return (
@@ -196,7 +196,7 @@ export function AssignRiderModal({ orderId, restaurantId, currentRiderId, curren
                                     <>
                                         <div className="flex items-center gap-2 px-2 py-1.5 text-xs font-medium text-muted-foreground mt-2">
                                             <Circle className="h-2 w-2 fill-amber-400 text-amber-400" />
-                                            On Delivery ({busyRiders.length})
+                                            Pickup Phase ({busyRiders.length})
                                         </div>
                                         {busyRiders.map((rider) => (
                                             <button
@@ -211,7 +211,7 @@ export function AssignRiderModal({ orderId, restaurantId, currentRiderId, curren
                                                 <div className="flex-1 min-w-0">
                                                     <p className="font-medium truncate">{rider.name}</p>
                                                     <p className="text-sm text-muted-foreground">
-                                                        On delivery • Can accept
+                                                        At restaurant • Can accept
                                                     </p>
                                                 </div>
                                                 {rider.id === currentRiderId && (

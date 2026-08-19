@@ -48,10 +48,19 @@ export async function pickupOrder(orderId: string, riderId: string) {
         return { error: 'Order not found or not assigned to you' }
     }
 
-    // Update rider status to on_delivery
+    const { count: pendingPickupCount } = await supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('rider_id', riderId)
+        .in('status', ['pending', 'confirmed', 'preparing', 'ready'])
+        .is('picked_up_at', null)
+
+    const nextRiderStatus = (pendingPickupCount || 0) > 0 ? 'on_delivery' : 'delivering'
+
+    // Rider leaves restaurant only when all assigned pickups are done.
     const { error: riderError } = await supabase
         .from('riders')
-        .update({ status: 'on_delivery' })
+        .update({ status: nextRiderStatus })
         .eq('id', riderId)
 
     if (riderError) {
@@ -60,7 +69,11 @@ export async function pickupOrder(orderId: string, riderId: string) {
 
     revalidatePath('/rider')
     revalidatePath('/dashboard/orders')
-    return { success: true }
+    return {
+        success: true,
+        hasMorePickups: (pendingPickupCount || 0) > 0,
+        pendingPickupCount: pendingPickupCount || 0,
+    }
 }
 
 export async function deliverOrder(
@@ -71,16 +84,35 @@ export async function deliverOrder(
 ) {
     const supabase = await createClient()
 
-    // Get order to check customer location
+    // Get order to check status and customer location
     const { data: order } = await supabase
         .from('orders')
-        .select('customer_latitude, customer_longitude')
+        .select('status, rider_id, customer_latitude, customer_longitude')
         .eq('id', orderId)
         .eq('rider_id', riderId)
         .single()
 
     if (!order) {
         return { error: 'Order not found' }
+    }
+
+    if (order.status !== 'out_for_delivery') {
+        return { error: 'Pick up the order before marking it delivered' }
+    }
+
+    // Enforce batch flow: rider must pick up all assigned active orders first.
+    const assignedRiderId = order.rider_id || riderId
+
+    const { count: unpickedAssignedCount } = await supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('rider_id', assignedRiderId)
+        .in('status', ['pending', 'confirmed', 'preparing', 'ready'])
+        .is('picked_up_at', null)
+        .neq('id', orderId)
+
+    if (unpickedAssignedCount && unpickedAssignedCount > 0) {
+        return { error: 'Pick up all assigned orders first, then mark deliveries' }
     }
 
     // If customer has location and rider provided location, check proximity
@@ -122,8 +154,13 @@ export async function deliverOrder(
         .eq('status', 'out_for_delivery')
         .neq('id', orderId)
 
-    // Only set to returning if no other active deliveries
-    if (!count) {
+    // Keep rider in delivering mode while any order is still out for delivery.
+    if (count && count > 0) {
+        await supabase
+            .from('riders')
+            .update({ status: 'delivering' })
+            .eq('id', riderId)
+    } else {
         await supabase
             .from('riders')
             .update({ status: 'returning' })
@@ -255,5 +292,66 @@ export async function confirmReturnOtp(orderId: string, riderId: string, otp: st
 
     revalidatePath('/rider')
     revalidatePath('/dashboard/orders')
+    return { success: true }
+}
+
+export async function requestCashDeposit(amount: number, note?: string) {
+    const supabase = await createClient()
+    const {
+        data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+        return { error: 'Unauthorized' }
+    }
+
+    const normalizedAmount = Math.round(Number(amount) * 100) / 100
+    if (!normalizedAmount || normalizedAmount <= 0) {
+        return { error: 'Invalid amount' }
+    }
+
+    const riderByEmail = user.email
+        ? await supabase
+            .from('riders')
+            .select('id, restaurant_id, cash_in_hand')
+            .eq('email', user.email)
+            .maybeSingle()
+            .then((res) => res.data)
+        : null
+
+    const riderByUserId = await supabase
+        .from('riders')
+        .select('id, restaurant_id, cash_in_hand')
+        .eq('user_id', user.id)
+        .maybeSingle()
+        .then((res) => res.data)
+
+    const rider = riderByEmail || riderByUserId
+
+    if (!rider) {
+        return { error: 'Rider not found' }
+    }
+
+    const cashInHand = Number(rider.cash_in_hand || 0)
+    if (normalizedAmount - cashInHand > 0.001) {
+        return { error: 'Amount exceeds cash in hand' }
+    }
+
+    const { error } = await supabase
+        .from('rider_cash_deposit_requests')
+        .insert({
+            rider_id: rider.id,
+            restaurant_id: rider.restaurant_id,
+            amount: normalizedAmount,
+            note: note || null,
+            status: 'pending'
+        })
+
+    if (error) {
+        console.error('Error creating deposit request:', error)
+        return { error: 'Failed to create request' }
+    }
+
+    revalidatePath('/rider')
     return { success: true }
 }

@@ -25,14 +25,14 @@ import { updateRestaurant } from '@/app/onboarding/actions'
 
 interface OnlineToggleProps {
     restaurantId: string
-    isActive: boolean
+    isOnline: boolean
     profileComplete: boolean
 }
 
-export function OnlineToggle({ restaurantId, isActive, profileComplete }: OnlineToggleProps) {
+export function OnlineToggle({ restaurantId, isOnline, profileComplete }: OnlineToggleProps) {
     const [showConfirm, setShowConfirm] = useState(false)
     const [isPending, startTransition] = useTransition()
-    const [currentValue, setCurrentValue] = useState(isActive)
+    const [currentValue, setCurrentValue] = useState(isOnline)
 
     const handleToggle = () => {
         if (!profileComplete && !currentValue) {
@@ -45,7 +45,7 @@ export function OnlineToggle({ restaurantId, isActive, profileComplete }: Online
     const handleConfirm = () => {
         startTransition(async () => {
             const newValue = !currentValue
-            const result = await updateRestaurant(restaurantId, { is_active: newValue } as any)
+            const result = await updateRestaurant(restaurantId, { is_online: newValue } as any)
 
             if (result.error) {
                 toast.error(result.error)

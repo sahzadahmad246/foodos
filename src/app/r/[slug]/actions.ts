@@ -45,6 +45,16 @@ export async function createOrder(data: CreateOrderData) {
             return { error: 'Cart is empty' }
         }
 
+        const { data: restaurant } = await supabase
+            .from('restaurants')
+            .select('is_online')
+            .eq('id', data.restaurantId)
+            .single()
+
+        if (!restaurant || restaurant.is_online === false) {
+            return { error: 'Restaurant is not accepting orders currently' }
+        }
+
         // Generate order number
         const orderNumber = `ORD-${Date.now().toString().slice(-8)}`
 
@@ -65,9 +75,9 @@ export async function createOrder(data: CreateOrderData) {
                 tax_amount: data.taxAmount,
                 total_amount: data.totalAmount,
                 payment_method: data.paymentMethod,
+                payment_status: data.paymentMethod === 'online' ? 'paid' : 'pending',
                 notes: data.notes,
                 status: 'pending',
-                payment_status: 'pending',
                 pickup_otp: (!data.customerAddress) ? Math.floor(100000 + Math.random() * 900000).toString() : null,
             })
             .select()

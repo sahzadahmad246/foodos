@@ -1,10 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { MapPin, Phone, User, Clock, Package, ChefHat, Bike, Check, X, Loader2, UserPlus, Store, Banknote, CheckCircle2, XCircle, RotateCcw } from 'lucide-react'
+import { MapPin, Phone, User, Clock, Package, ChefHat, Bike, Check, X, Loader2, UserPlus, Store, Banknote, CheckCircle2, XCircle, RotateCcw, MoreHorizontal } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import {
     AlertDialog,
     AlertDialogAction,
@@ -19,6 +20,7 @@ import { acceptOrder, rejectOrder, markOrderReady, cancelOrder, verifyReturnOtp,
 import { AssignRiderModal } from './assign-rider-dropdown'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
+import { printThermalBill, printThermalKot, type BillRestaurantInfo } from './thermal-bill'
 
 interface OrderItem {
     id: string
@@ -54,6 +56,7 @@ interface Order {
     rider?: {
         id: string
         name: string
+        phone?: string | null
     } | null
     cancellation_reason?: string | null
     cancelled_by?: string | null
@@ -64,15 +67,16 @@ interface Order {
 
 interface OrderCardProps {
     order: Order
+    restaurantInfo: BillRestaurantInfo
 }
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: string }> = {
-    pending: { label: 'New Order', color: 'text-yellow-700', bgColor: 'bg-yellow-100 border-yellow-300' },
-    preparing: { label: 'Preparing', color: 'text-purple-700', bgColor: 'bg-purple-100 border-purple-300' },
-    ready: { label: 'Ready for Pickup', color: 'text-green-700', bgColor: 'bg-green-100 border-green-300' },
-    out_for_delivery: { label: 'Out for Delivery', color: 'text-blue-700', bgColor: 'bg-blue-100 border-blue-300' },
-    delivered: { label: 'Delivered', color: 'text-green-800', bgColor: 'bg-green-50 border-green-200' },
-    cancelled: { label: 'Cancelled', color: 'text-red-700', bgColor: 'bg-red-100 border-red-300' },
+const STATUS_CONFIG: Record<string, { label: string; pill: string; accent: string }> = {
+    pending: { label: 'New Order', pill: 'text-yellow-700 bg-yellow-50 border-yellow-200', accent: 'bg-yellow-400' },
+    preparing: { label: 'Preparing', pill: 'text-purple-700 bg-purple-50 border-purple-200', accent: 'bg-purple-500' },
+    ready: { label: 'Ready for Pickup', pill: 'text-green-700 bg-green-50 border-green-200', accent: 'bg-green-500' },
+    out_for_delivery: { label: 'Out for Delivery', pill: 'text-blue-700 bg-blue-50 border-blue-200', accent: 'bg-blue-500' },
+    delivered: { label: 'Delivered', pill: 'text-emerald-700 bg-emerald-50 border-emerald-200', accent: 'bg-emerald-500' },
+    cancelled: { label: 'Cancelled', pill: 'text-red-700 bg-red-50 border-red-200', accent: 'bg-red-500' },
 }
 
 const CANCELLATION_REASONS = [
@@ -89,7 +93,7 @@ const CANCELLATION_REASONS = [
 
 type LoadingAction = 'accept' | 'reject' | 'ready' | 'assign' | 'cancel' | 'returnVerify' | 'returnCollect' | null
 
-export function OrderCard({ order }: OrderCardProps) {
+export function OrderCard({ order, restaurantInfo }: OrderCardProps) {
     const router = useRouter()
     const [loadingAction, setLoadingAction] = useState<LoadingAction>(null)
     const [showRejectDialog, setShowRejectDialog] = useState(false)
@@ -107,6 +111,16 @@ export function OrderCard({ order }: OrderCardProps) {
     const [returnError, setReturnError] = useState('')
 
     const statusConfig = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending
+    const isCodPayment = order.payment_method === 'cod'
+    const paymentSummaryLabel = isCodPayment
+        ? (order.payment_status === 'paid' ? 'Cash collected' : 'Collect on delivery')
+        : (
+            order.payment_status === 'paid'
+                ? 'Paid'
+                : order.payment_status === 'failed'
+                    ? 'Payment failed'
+                    : 'Online pending'
+        )
     const isLoading = loadingAction !== null
 
     // Reset state when dialog opens
@@ -124,8 +138,36 @@ export function OrderCard({ order }: OrderCardProps) {
         if (result.error) {
             toast.error(result.error)
         } else {
+            const printed = printThermalBill(restaurantInfo, {
+                ...order,
+                status: 'preparing',
+            })
+            const kotPrinted = printThermalKot(restaurantInfo, {
+                ...order,
+                status: 'preparing',
+            })
+            if (!printed) {
+                toast.warning('Order accepted. Please enable popups to print or save as PDF.')
+            }
+            if (!kotPrinted) {
+                toast.warning('Order accepted. Please enable popups to print KOT.')
+            }
             toast.success('Order accepted! Start preparing.')
             router.refresh()
+        }
+    }
+
+    const handlePrintBill = () => {
+        const printed = printThermalBill(restaurantInfo, order)
+        if (!printed) {
+            toast.warning('Please enable popups to print or save as PDF.')
+        }
+    }
+
+    const handlePrintKot = () => {
+        const printed = printThermalKot(restaurantInfo, order)
+        if (!printed) {
+            toast.warning('Please enable popups to print KOT.')
         }
     }
 
@@ -268,95 +310,156 @@ export function OrderCard({ order }: OrderCardProps) {
 
     return (
         <>
-            <Card data-testid="order-card" className={`overflow-hidden border-2 ${statusConfig.bgColor}`}>
-                <CardHeader className="pb-2 pt-3 px-4">
-                    <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-3">
-                            <div className="font-mono font-bold text-lg">{order.order_number}</div>
-                            <Badge variant="outline" className={statusConfig.color}>
-                                {statusConfig.label}
-                            </Badge>
-                            {order.payment_method === 'cod' && (
-                                <Badge variant="secondary" className="text-xs">COD</Badge>
-                            )}
-                            {order.payment_status === 'paid' && (
-                                <Badge className="bg-green-500 text-xs">Paid</Badge>
-                            )}
+            <Card data-testid="order-card" className="group relative overflow-hidden rounded-2xl border border-border/60 bg-white/90 dark:bg-gray-900/80 shadow-sm transition hover:shadow-md">
+                <CardHeader className="pb-3 pt-4 px-4 sm:px-5">
+                    <div className="flex items-start justify-between gap-3">
+                        <div className="flex flex-col gap-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <div className="font-mono font-bold text-lg sm:text-xl tracking-tight">{order.order_number}</div>
+                                <Badge variant="outline" className={`border ${statusConfig.pill} text-[11px] font-semibold`}>
+                                    {statusConfig.label}
+                                </Badge>
+                                {order.payment_method === 'cod' && (
+                                    <Badge variant="secondary" className="text-[11px]">COD</Badge>
+                                )}
+                                {order.payment_status === 'paid' && (
+                                    <Badge className="bg-emerald-600 text-[11px]">Paid</Badge>
+                                )}
+                            </div>
+                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                <Clock className="h-3.5 w-3.5" />
+                                {formatTime(order.created_at)}
+                            </div>
                         </div>
-                        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                            <Clock className="h-4 w-4" />
-                            {formatTime(order.created_at)}
-                        </div>
+                        {!['delivered', 'cancelled'].includes(order.status) && (
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-9 w-9 rounded-full"
+                                        disabled={isLoading}
+                                    >
+                                        <MoreHorizontal className="h-5 w-5" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-44">
+                                    <DropdownMenuItem
+                                        onClick={openCancelDialog}
+                                        className="text-destructive focus:text-destructive"
+                                    >
+                                        <XCircle className="mr-2 h-4 w-4" />
+                                        Cancel Order
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        )}
                     </div>
                 </CardHeader>
 
-                <CardContent className="space-y-3 px-4 pb-4">
-                    {/* Customer Info */}
-                    <div className="flex items-start gap-4 text-sm">
-                        <div className="flex items-center gap-2 min-w-0 flex-1">
-                            <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                            <span className="font-medium truncate">{order.customer_name}</span>
+                <CardContent className="space-y-4 px-4 sm:px-5 pb-5">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="rounded-xl border border-border/60 bg-background/60 p-3 sm:p-4 space-y-2">
+                            <div className="flex items-center gap-2 text-sm">
+                                <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                <span className="font-semibold truncate">{order.customer_name}</span>
+                            </div>
+                            {order.customer_phone && (
+                                <a href={`tel:${order.customer_phone}`} className="flex items-center gap-2 text-sm text-primary hover:underline">
+                                    <Phone className="h-4 w-4" />
+                                    {order.customer_phone}
+                                </a>
+                            )}
+                            {order.customer_address ? (
+                                <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                                    <MapPin className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                                    <span className="line-clamp-2">{order.customer_address}</span>
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-2 text-xs">
+                                    <Store className="h-4 w-4 text-primary" />
+                                    <span className="font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                                        Pickup Order
+                                    </span>
+                                </div>
+                            )}
+
+                            {order.customer_address && order.rider && (
+                                <div className="flex items-center justify-between gap-3 rounded-xl border border-blue-100 dark:border-blue-900/40 bg-blue-50/70 dark:bg-blue-950/30 p-2.5 sm:p-3">
+                                    <div className="flex items-center gap-2 text-xs sm:text-sm">
+                                        <div className="h-7 w-7 rounded-full bg-blue-600/10 flex items-center justify-center">
+                                            <Bike className="h-4 w-4 text-blue-600" />
+                                        </div>
+                                        <div className="leading-tight">
+                                            <div className="text-blue-800 dark:text-blue-300 font-semibold">{order.rider.name}</div>
+                                            <div className="text-[11px] text-blue-700/70 dark:text-blue-400/70">Assigned rider</div>
+                                        </div>
+                                    </div>
+                                    {order.rider.phone ? (
+                                        <a
+                                            href={`tel:${order.rider.phone}`}
+                                            className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 dark:border-blue-800 bg-white/70 dark:bg-gray-900 px-2.5 py-1 text-[11px] font-semibold text-blue-700 hover:bg-white"
+                                        >
+                                            <Phone className="h-3.5 w-3.5 text-blue-700 shrink-0" />
+                                            Call
+                                        </a>
+                                    ) : (
+                                        <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-100 dark:border-blue-900/40 bg-white/60 dark:bg-gray-900/60 px-2.5 py-1 text-[11px] text-blue-700/60">
+                                            <Phone className="h-3.5 w-3.5 text-blue-700/60 shrink-0" />
+                                            No phone
+                                        </span>
+                                    )}
+                                </div>
+                            )}
                         </div>
-                        {order.customer_phone && (
-                            <a href={`tel:${order.customer_phone}`} className="flex items-center gap-1.5 text-primary hover:underline">
-                                <Phone className="h-4 w-4" />
-                                {order.customer_phone}
-                            </a>
-                        )}
+
+                        <div className="rounded-xl border border-border/60 bg-background/60 p-3 sm:p-4 space-y-2">
+                            <div className="flex items-center justify-between">
+                                <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Total</span>
+                                <span className="text-xl font-bold">₹{order.total_amount.toFixed(0)}</span>
+                            </div>
+                            <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                <span>Items</span>
+                                <span>₹{order.items_total.toFixed(0)}</span>
+                            </div>
+                            <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                <span>Delivery</span>
+                                <span>₹{order.delivery_fee.toFixed(0)}</span>
+                            </div>
+                            <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                <span>Tax</span>
+                                <span>₹{order.tax_amount.toFixed(0)}</span>
+                            </div>
+                            <div className="pt-2 border-t text-xs flex items-center gap-2 text-muted-foreground">
+                                <Banknote className="h-4 w-4" />
+                                <span className="font-medium text-foreground">{paymentSummaryLabel}</span>
+                            </div>
+                        </div>
                     </div>
 
-                    {order.customer_address ? (
-                        <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                            <MapPin className="h-4 w-4 flex-shrink-0 mt-0.5" />
-                            <span className="line-clamp-2">{order.customer_address}</span>
-                        </div>
-                    ) : (
-                        <div className="flex items-center gap-2 text-sm">
-                            <Store className="h-4 w-4 text-primary" />
-                            <span className="font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full text-xs">
-                                🏬 Pickup Order
-                            </span>
-                        </div>
-                    )}
-
-                    {/* Rider Info */}
-                    {order.customer_address && order.rider && (
-                        <div className="flex items-center gap-2 text-sm bg-blue-50 dark:bg-blue-950/30 p-2.5 rounded-lg">
-                            <Bike className="h-4 w-4 text-blue-600 flex-shrink-0" />
-                            <span className="text-blue-700 dark:text-blue-400">
-                                Rider: <strong>{order.rider.name}</strong>
-                            </span>
-                        </div>
-                    )}
-
-                    {/* Order Items */}
-                    <div className="bg-background/50 rounded-lg p-3 space-y-1.5">
-                        <div className="flex items-center gap-2 text-sm font-medium mb-2">
+                    <div className="rounded-xl border border-border/60 bg-background/60 p-3 sm:p-4">
+                        <div className="flex items-center gap-2 text-sm font-semibold">
                             <Package className="h-4 w-4" />
                             Items ({order.order_items?.length || 0})
                         </div>
-                        {(order.order_items || []).map((item) => (
-                            <div key={item.id} className="flex justify-between text-sm">
-                                <span>{item.quantity}x {item.name}</span>
-                                <span className="font-medium">₹{(item.price * item.quantity).toFixed(0)}</span>
-                            </div>
-                        ))}
-                        {(!order.order_items || order.order_items.length === 0) && (
-                            <p className="text-xs text-muted-foreground">No items data</p>
-                        )}
-                        <div className="flex justify-between font-semibold pt-2 border-t mt-2">
-                            <span>Total</span>
-                            <span>₹{order.total_amount.toFixed(0)}</span>
+                        <div className="mt-2 space-y-2">
+                            {(order.order_items || []).map((item) => (
+                                <div key={item.id} className="flex items-center justify-between text-sm">
+                                    <span className="text-muted-foreground">{item.quantity}x {item.name}</span>
+                                    <span className="font-medium">₹{(item.price * item.quantity).toFixed(0)}</span>
+                                </div>
+                            ))}
+                            {(!order.order_items || order.order_items.length === 0) && (
+                                <p className="text-xs text-muted-foreground">No items data</p>
+                            )}
                         </div>
                     </div>
 
-                    {/* Notes */}
                     {order.notes && (
-                        <div className="text-sm text-muted-foreground bg-muted/50 rounded p-2">
+                        <div className="text-sm text-muted-foreground bg-muted/50 rounded-lg p-3">
                             <span className="font-medium">Note: </span>{order.notes}
                         </div>
                     )}
-
 
                     {/* Progress Stepper */}
                     {(() => {
@@ -470,7 +573,25 @@ export function OrderCard({ order }: OrderCardProps) {
                     })()}
 
                     {/* Action Buttons */}
-                    <div className="flex gap-2 pt-2">
+                    <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                        <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
+                            <Button
+                                variant="outline"
+                                onClick={handlePrintBill}
+                                disabled={isLoading}
+                                className="w-full sm:w-auto"
+                            >
+                                Print Bill
+                            </Button>
+                            <Button
+                                variant="outline"
+                                onClick={handlePrintKot}
+                                disabled={isLoading}
+                                className="w-full sm:w-auto"
+                            >
+                                Print KOT
+                            </Button>
+                        </div>
                         {order.status === 'pending' && (
                             <>
                                 <Button
@@ -498,11 +619,11 @@ export function OrderCard({ order }: OrderCardProps) {
                         )}
 
                         {order.status === 'preparing' && (
-                            <>
+                            <div className="grid grid-cols-2 gap-2 w-full">
                                 <Button
                                     onClick={handleMarkReady}
                                     disabled={isLoading}
-                                    className="flex-1 bg-green-600 hover:bg-green-700"
+                                    className="bg-green-600 hover:bg-green-700"
                                 >
                                     {loadingAction === 'ready' ? (
                                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -512,30 +633,40 @@ export function OrderCard({ order }: OrderCardProps) {
                                     Mark Ready
                                 </Button>
                                 {/* Only show Assign Rider for delivery orders */}
-                                {order.customer_address && (
+                                {order.customer_address ? (
                                     <AssignRiderModal
                                         orderId={order.id}
                                         restaurantId={order.restaurant_id}
                                         currentRiderId={order.rider_id}
                                         currentRiderName={order.rider?.name}
                                     />
+                                ) : (
+                                    <Button
+                                        onClick={openVerifyDialog}
+                                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                                    >
+                                        <Store className="h-4 w-4 mr-2" />
+                                        Handover
+                                    </Button>
                                 )}
-                            </>
+                            </div>
                         )}
 
                         {order.status === 'ready' && order.customer_address && (
-                            <AssignRiderModal
-                                orderId={order.id}
-                                restaurantId={order.restaurant_id}
-                                currentRiderId={order.rider_id}
-                                currentRiderName={order.rider?.name}
-                            />
+                            <div className="w-full sm:w-auto">
+                                <AssignRiderModal
+                                    orderId={order.id}
+                                    restaurantId={order.restaurant_id}
+                                    currentRiderId={order.rider_id}
+                                    currentRiderName={order.rider?.name}
+                                />
+                            </div>
                         )}
 
                         {order.status === 'ready' && !order.customer_address && (
                             <Button
                                 onClick={openVerifyDialog}
-                                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white"
                             >
                                 <Store className="h-4 w-4 mr-2" />
                                 Handover Order
@@ -593,21 +724,7 @@ export function OrderCard({ order }: OrderCardProps) {
                         )}
                     </div>
 
-                    {/* Cancel Order Button - for non-delivered, non-cancelled orders */}
-                    {!['delivered', 'cancelled'].includes(order.status) && (
-                        <div className="pt-2">
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={openCancelDialog}
-                                disabled={isLoading}
-                                className="w-full text-red-600 hover:text-red-700 hover:bg-red-50"
-                            >
-                                <XCircle className="h-4 w-4 mr-2" />
-                                Cancel Order
-                            </Button>
-                        </div>
-                    )}
+                    {/* Cancel Order moved to dropdown in header */}
                 </CardContent>
             </Card>
 

@@ -364,10 +364,10 @@ export default async function OutletPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <ToggleSetting
                         restaurantId={restaurant.id}
-                        settingName="is_active"
+                        settingName="is_online"
                         label="Go Online"
                         description="Accept new orders"
-                        enabled={restaurant.is_active}
+                        enabled={restaurant.is_online}
                         isRestaurantField={true}
                         requiresProfileComplete={true}
                         profileComplete={canGoOnlineStatus}

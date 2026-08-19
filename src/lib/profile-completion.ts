@@ -15,18 +15,26 @@ export function calculateProfileCompletion(restaurant: {
     opening_time?: string | null
     closing_time?: string | null
 } | null): { percentage: number; missing: string[] } {
+    const hasValue = (value?: string | null) => typeof value === 'string' && value.trim().length > 0
+    const hasCoordinates =
+        restaurant.latitude !== null &&
+        restaurant.latitude !== undefined &&
+        restaurant.longitude !== null &&
+        restaurant.longitude !== undefined
+    const hasOperatingHours = !!settings && hasValue(settings.opening_time) && hasValue(settings.closing_time)
+
     // All fields for percentage display
     const fields = [
-        { name: 'Restaurant Name', filled: !!restaurant.name },
-        { name: 'Description', filled: !!restaurant.description },
-        { name: 'Logo', filled: !!restaurant.logo_url },
-        { name: 'Phone Number', filled: !!restaurant.phone },
-        { name: 'Address', filled: !!restaurant.address_line1 },
-        { name: 'City', filled: !!restaurant.city },
-        { name: 'Pincode', filled: !!restaurant.pincode },
-        { name: 'Location on Map', filled: !!(restaurant.latitude && restaurant.longitude) },
+        { name: 'Restaurant Name', filled: hasValue(restaurant.name) },
+        { name: 'Description', filled: hasValue(restaurant.description) },
+        { name: 'Logo', filled: hasValue(restaurant.logo_url) },
+        { name: 'Phone Number', filled: hasValue(restaurant.phone) },
+        { name: 'Address', filled: hasValue(restaurant.address_line1) },
+        { name: 'City', filled: hasValue(restaurant.city) },
+        { name: 'Pincode', filled: hasValue(restaurant.pincode) },
+        { name: 'Location on Map', filled: hasCoordinates },
         { name: 'Cuisine Type', filled: !!(restaurant.cuisine_type && restaurant.cuisine_type.length > 0) },
-        { name: 'Operating Hours', filled: !!(settings && settings.opening_time && settings.closing_time) },
+        { name: 'Operating Hours', filled: hasOperatingHours },
     ]
 
     const missing: string[] = []

@@ -22,7 +22,6 @@ import {
 } from '@/components/ui/alert-dialog'
 import { pickupOrder, deliverOrder, confirmReturnOtp } from '@/app/rider/actions'
 import { toast } from 'sonner'
-import { Input } from '@/components/ui/input'
 
 interface OrderItem {
     id: string
@@ -74,9 +73,11 @@ export function RiderOrderDetail({ order, riderId }: RiderOrderDetailProps) {
     const [returnOtp, setReturnOtp] = useState('')
     const [returnError, setReturnError] = useState('')
     const [isVerifyingReturn, setIsVerifyingReturn] = useState(false)
+    const [isOtpFocused, setIsOtpFocused] = useState(false)
 
     const isReady = order.status === 'ready'
     const isOnTheWay = order.status === 'out_for_delivery'
+    const isDelivered = order.status === 'delivered'
     const isCancelled = order.status === 'cancelled'
     const isCOD = order.payment_method === 'cod'
     const requiresLocationCheck = !!order.customer_latitude && !!order.customer_longitude
@@ -159,7 +160,17 @@ export function RiderOrderDetail({ order, riderId }: RiderOrderDetailProps) {
             if (result.error) {
                 toast.error(result.error)
             } else {
-                toast.success('Order picked up! Navigate to customer.')
+                if ('hasMorePickups' in result && result.hasMorePickups) {
+                    const count = 'pendingPickupCount' in result ? result.pendingPickupCount : 0
+                    toast.success(
+                        count > 0
+                            ? `${count} more order${count > 1 ? 's' : ''} waiting pickup.`
+                            : 'More assigned orders are waiting pickup.'
+                    )
+                } else {
+                    toast.success('Order picked up! Choose any order to proceed with delivery.')
+                }
+                router.replace('/rider')
                 router.refresh()
             }
         })
@@ -237,7 +248,7 @@ export function RiderOrderDetail({ order, riderId }: RiderOrderDetailProps) {
             <header className="sticky top-0 z-50 border-b bg-white dark:bg-gray-900">
                 <div className="max-w-lg mx-auto px-4 py-4">
                     <div className="flex items-center gap-4">
-                        <Link href="/rider">
+                        <Link href="/rider/orders">
                             <button className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
                                 <ArrowLeft className="h-5 w-5 text-gray-700 dark:text-gray-300" />
                             </button>
@@ -379,28 +390,58 @@ export function RiderOrderDetail({ order, riderId }: RiderOrderDetailProps) {
                         </div>
 
                         {/* Return Instructions with OTP Input */}
-                        <div className="mt-4 p-4 bg-white dark:bg-gray-900 rounded-xl border border-amber-200 dark:border-amber-800">
-                            <div className="flex items-center gap-2 mb-2">
+                        <div className="mt-4">
+                            <div className="mb-2 flex items-center gap-2">
                                 <RotateCcw className="h-4 w-4 text-amber-600" />
-                                <span className="font-semibold text-amber-700 dark:text-amber-400">Return Required</span>
+                                <span className="font-semibold text-amber-800 dark:text-amber-300">Return Required</span>
                             </div>
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                            <p className="mb-3 text-sm text-gray-600 dark:text-gray-400">
                                 Return the order to {order.restaurant?.name || 'the restaurant'} and enter the OTP they give you:
                             </p>
 
                             <div className="space-y-3">
-                                <Input
-                                    type="text"
-                                    inputMode="numeric"
-                                    maxLength={6}
-                                    placeholder="Enter 6-digit OTP"
-                                    value={returnOtp}
-                                    onChange={(e) => {
-                                        setReturnOtp(e.target.value.replace(/\D/g, ''))
-                                        setReturnError('')
-                                    }}
-                                    className="text-center text-2xl font-mono tracking-widest"
-                                />
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        inputMode="numeric"
+                                        maxLength={6}
+                                        value={returnOtp}
+                                        onFocus={() => setIsOtpFocused(true)}
+                                        onBlur={() => setIsOtpFocused(false)}
+                                        onChange={(e) => {
+                                            setReturnOtp(e.target.value.replace(/\D/g, ''))
+                                            setReturnError('')
+                                        }}
+                                        className="absolute inset-0 z-10 h-full w-full cursor-text opacity-0"
+                                        aria-label="Enter 6-digit return OTP"
+                                    />
+                                    <div className="grid grid-cols-6 gap-2">
+                                        {Array.from({ length: 6 }).map((_, index) => (
+                                            (() => {
+                                                const isActiveSlot = isOtpFocused && index === Math.min(returnOtp.length, 5)
+                                                const hasDigit = Boolean(returnOtp[index])
+                                                return (
+                                                    <div
+                                                        key={index}
+                                                        className={`relative flex h-12 items-center justify-center rounded-lg border bg-white text-lg font-semibold shadow-sm transition-all dark:bg-gray-950 ${
+                                                            isActiveSlot
+                                                                ? 'border-amber-500 ring-2 ring-amber-200 dark:border-amber-500 dark:ring-amber-900/60'
+                                                                : 'border-amber-300 dark:border-amber-700'
+                                                        } ${hasDigit ? 'text-amber-900 dark:text-amber-200' : 'text-amber-300 dark:text-amber-700'}`}
+                                                    >
+                                                        {hasDigit ? returnOtp[index] : ''}
+                                                        {isActiveSlot && !hasDigit && (
+                                                            <span className="absolute h-5 w-0.5 animate-pulse bg-amber-600 dark:bg-amber-300" />
+                                                        )}
+                                                    </div>
+                                                )
+                                            })()
+                                        ))}
+                                    </div>
+                                </div>
+                                <p className="text-center text-xs text-amber-700/80 dark:text-amber-300/80">
+                                    Enter 6-digit OTP
+                                </p>
 
                                 {returnError && (
                                     <p className="text-sm text-red-500 text-center">{returnError}</p>
@@ -458,38 +499,44 @@ export function RiderOrderDetail({ order, riderId }: RiderOrderDetailProps) {
                 )}
 
                 {/* Delivery Destination Card */}
-                {order.customer_address && (
+                {(order.customer_address || isDelivered) && (
                     <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
                         <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2">
                             <MapPin className="h-4 w-4 text-gray-500" />
-                            <span className="font-medium text-sm text-gray-900 dark:text-white">Delivery Address</span>
+                            <span className="font-medium text-sm text-gray-900 dark:text-white">
+                                {isDelivered ? 'Customer' : 'Delivery Address'}
+                            </span>
                         </div>
                         <div className="p-4">
                             <p className="font-semibold text-gray-900 dark:text-white">
                                 {order.customer_name}
                             </p>
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                {order.customer_address}
-                            </p>
+                            {!isDelivered && (
+                                <>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                        {order.customer_address}
+                                    </p>
 
-                            <div className="flex gap-3 mt-4">
-                                {order.customer_phone && (
-                                    <Button variant="outline" asChild className="flex-1 h-10 rounded-xl text-sm">
-                                        <a href={`tel:${order.customer_phone}`}>
-                                            <Phone className="h-4 w-4 mr-2" />
-                                            Call
-                                        </a>
-                                    </Button>
-                                )}
-                                {getDirectionsUrl() && (
-                                    <Button variant="outline" asChild className="flex-1 h-10 rounded-xl text-sm">
-                                        <a href={getDirectionsUrl()!} target="_blank" rel="noopener noreferrer">
-                                            <Navigation className="h-4 w-4 mr-2" />
-                                            Navigate
-                                        </a>
-                                    </Button>
-                                )}
-                            </div>
+                                    <div className="flex gap-3 mt-4">
+                                        {order.customer_phone && (
+                                            <Button variant="outline" asChild className="flex-1 h-10 rounded-xl text-sm">
+                                                <a href={`tel:${order.customer_phone}`}>
+                                                    <Phone className="h-4 w-4 mr-2" />
+                                                    Call
+                                                </a>
+                                            </Button>
+                                        )}
+                                        {getDirectionsUrl() && (
+                                            <Button variant="outline" asChild className="flex-1 h-10 rounded-xl text-sm">
+                                                <a href={getDirectionsUrl()!} target="_blank" rel="noopener noreferrer">
+                                                    <Navigation className="h-4 w-4 mr-2" />
+                                                    Navigate
+                                                </a>
+                                            </Button>
+                                        )}
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </div>
                 )}
@@ -507,7 +554,9 @@ export function RiderOrderDetail({ order, riderId }: RiderOrderDetailProps) {
                                     <div className="flex items-center justify-between">
                                         <div>
                                             <p className="font-medium text-gray-900 dark:text-white">Cash on Delivery</p>
-                                            <p className="text-sm text-gray-500 dark:text-gray-400">Collect from customer</p>
+                                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                                                {isDelivered ? 'Cash collected from customer' : 'Collect from customer'}
+                                            </p>
                                         </div>
                                         <p className="text-2xl font-bold text-gray-900 dark:text-white">
                                             ₹{order.total_amount}
@@ -515,14 +564,38 @@ export function RiderOrderDetail({ order, riderId }: RiderOrderDetailProps) {
                                     </div>
 
                                     {isOnTheWay && (
-                                        <label className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                                        <label
+                                            className={`relative flex items-center gap-3 p-3 rounded-xl border cursor-pointer overflow-hidden ${
+                                                paymentCollected
+                                                    ? 'border-emerald-300 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/30'
+                                                    : 'border-amber-300 bg-white dark:border-amber-600 dark:bg-gray-900'
+                                            }`}
+                                        >
+                                            {!paymentCollected && (
+                                                <>
+                                                    <style>{`
+                                                        @keyframes rider-collect-wave {
+                                                            0% { transform: translateX(-100%); }
+                                                            100% { transform: translateX(280%); }
+                                                        }
+                                                    `}</style>
+                                                    <span
+                                                        aria-hidden
+                                                        className="pointer-events-none absolute top-0 bottom-0 left-0 w-[55%] z-0"
+                                                        style={{
+                                                            background: 'linear-gradient(90deg, transparent 0%, rgba(253,224,71,0.18) 30%, rgba(251,191,36,0.32) 50%, rgba(252,211,77,0.18) 70%, transparent 100%)',
+                                                            animation: 'rider-collect-wave 2.6s ease-in-out infinite',
+                                                        }}
+                                                    />
+                                                </>
+                                            )}
                                             <Checkbox
                                                 id="payment-collected"
                                                 checked={paymentCollected}
                                                 onCheckedChange={(checked) => setPaymentCollected(checked === true)}
-                                                className="h-5 w-5"
+                                                className="relative z-10 h-5 w-5"
                                             />
-                                            <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                            <span className="relative z-10 text-sm font-medium text-gray-900 dark:text-white">
                                                 I have collected ₹{order.total_amount}
                                             </span>
                                         </label>

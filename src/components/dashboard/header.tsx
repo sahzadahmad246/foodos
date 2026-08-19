@@ -1,13 +1,15 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { User } from '@supabase/supabase-js'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowUpRight, CircleHelp } from 'lucide-react'
 import { UserDropdown } from '@/components/user-dropdown'
 import { MobileSidebar, getPageTitle } from '@/components/dashboard/sidebar'
 import { OnlineToggle } from '@/components/dashboard/online-toggle'
 import { Button } from '@/components/ui/button'
+import { createClient } from '@/lib/supabase/client'
 
 interface HeaderProps {
     user: User

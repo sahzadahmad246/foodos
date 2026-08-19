@@ -5,14 +5,48 @@ import { Button } from '@/components/ui/button'
 import { ClipboardList, UtensilsCrossed, DollarSign, Users, ArrowUpRight, Store, CheckCircle2 } from 'lucide-react'
 import { ProfileCompletionCard } from '@/components/dashboard/profile-completion-card'
 import { calculateProfileCompletion } from '@/lib/profile-completion'
+import type { ReactNode } from 'react'
 
-export default async function DashboardPage() {
+function DashboardSection({
+    title,
+    description,
+    children,
+}: {
+    title: string
+    description?: string
+    children: ReactNode
+}) {
+    return (
+        <section className="relative overflow-hidden rounded-lg border border-border bg-card shadow-sm hover:shadow-md transition-shadow">
+            <div className="border-b border-border bg-muted/40 px-4 py-4 sm:px-6">
+                <h3 className="text-base font-semibold text-foreground">{title}</h3>
+                {description ? <p className="mt-1 text-sm text-muted-foreground">{description}</p> : null}
+            </div>
+            <div className="relative px-4 py-5 sm:px-6">
+                {children}
+            </div>
+            <div
+                className="absolute bottom-0 left-1/2 h-10 w-[70%] -translate-x-1/2 blur-2xl"
+                style={{ background: 'rgba(117, 242, 190, 0.25)' }}
+            />
+        </section>
+    )
+}
+
+interface DashboardPageProps {
+    searchParams?: Promise<{ range?: string }>
+}
+
+export default async function DashboardPage({ searchParams }: DashboardPageProps) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     const { data: restaurant } = await supabase.from('restaurants').select('*, restaurant_settings(*)').eq('owner_id', user?.id).single()
     if (!restaurant) return null
 
-    const settings = restaurant.restaurant_settings?.[0] || null
+    const settingsRelation = (restaurant as any).restaurant_settings
+    const settings = Array.isArray(settingsRelation)
+        ? (settingsRelation[0] ?? null)
+        : (settingsRelation ?? null)
     const { percentage, missing } = calculateProfileCompletion(restaurant, settings)
     const stats = [
         { title: "Today's orders", value: '0', note: 'No orders yet', icon: ClipboardList },

@@ -73,6 +73,35 @@ export async function assignRider(orderId: string, riderId: string) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: 'Not authenticated' }
 
+    const { data: rider } = await supabase
+        .from('riders')
+        .select('id, status')
+        .eq('id', riderId)
+        .single()
+
+    if (!rider) return { error: 'Rider not found' }
+
+    if (rider.status !== 'online' && rider.status !== 'on_delivery') {
+        return { error: 'Rider is not in assignable state' }
+    }
+
+    const { count: activeDeliveryCount } = await supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('rider_id', riderId)
+        .eq('status', 'out_for_delivery')
+
+    const { count: pendingPickupCount } = await supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('rider_id', riderId)
+        .in('status', ['pending', 'confirmed', 'preparing', 'ready'])
+        .is('picked_up_at', null)
+
+    if ((activeDeliveryCount || 0) > 0 && (pendingPickupCount || 0) === 0) {
+        return { error: 'Rider already left for delivery and cannot take new assignments now' }
+    }
+
     const { error } = await supabase
         .from('orders')
         .update({

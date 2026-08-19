@@ -1,13 +1,12 @@
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import {
-    Package, MapPin, Phone, Navigation, Banknote,
-    Bike, Clock, CheckCircle2, ChefHat, ChevronRight, XCircle, RotateCcw
+    Package, MapPin, Banknote,
+    Bike, Clock, CheckCircle2, ChefHat, ChevronRight, RotateCcw
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { RiderStatusToggle } from "@/components/rider/status-toggle"
-import { RealtimeRiderOrders } from "@/components/rider/realtime-rider-orders"
 import { RiderReturnCard } from "@/components/rider/return-card"
 import { UserDropdown } from "@/components/user-dropdown"
 
@@ -40,7 +39,7 @@ export default async function RiderDashboardPage() {
                     </div>
                     <h1 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">No Rider Access</h1>
                     <p className="text-gray-600 dark:text-gray-400 mb-6">
-                        You don't have rider access. Please contact your restaurant manager.
+                        You do not have rider access. Please contact your restaurant manager.
                     </p>
                     <Button asChild size="lg" className="rounded-full px-8">
                         <Link href="/">Go Home</Link>
@@ -97,10 +96,38 @@ export default async function RiderDashboardPage() {
         .is("return_verified_at", null)
         .order("created_at", { ascending: false })
 
-    // Combine orders - cancelled orders first (more urgent)
-    const orders = [...(cancelledOrders || []), ...(activeOrders || [])]
+    const pickupOrders = (activeOrders || []).filter((order) => order.status === 'ready' || order.status === 'preparing')
+    const onTheWayOrders = (activeOrders || []).filter((order) => order.status === 'out_for_delivery')
+
+    // Display order priority:
+    // 1) Cancelled return-required orders
+    // 2) Ready/Preparing pickup queue
+    // 3) Picked-up / on-the-way deliveries
+    const orders = [...(cancelledOrders || []), ...pickupOrders, ...onTheWayOrders]
 
     const activeOrderCount = activeOrders?.length || 0
+    const returnOrderCount = cancelledOrders?.length || 0
+
+    // Reconcile rider status with real order state to avoid stale phase labels.
+    const hasOutForDelivery = (activeOrders || []).some((o) => o.status === 'out_for_delivery')
+    const hasPendingPickup = (activeOrders || []).some((o) => o.status === 'preparing' || o.status === 'ready')
+    let effectiveRiderStatus = rider.status
+
+    if (hasOutForDelivery && rider.status !== 'delivering') {
+        effectiveRiderStatus = 'delivering'
+    } else if (!hasOutForDelivery && hasPendingPickup && rider.status === 'delivering') {
+        effectiveRiderStatus = 'on_delivery'
+    } else if (!hasOutForDelivery && !hasPendingPickup && (rider.status === 'on_delivery' || rider.status === 'delivering')) {
+        effectiveRiderStatus = 'returning'
+    }
+
+    if (effectiveRiderStatus !== rider.status) {
+        await supabase
+            .from('riders')
+            .update({ status: effectiveRiderStatus })
+            .eq('id', rider.id)
+        rider.status = effectiveRiderStatus
+    }
 
     const getStatusConfig = (status: string) => {
         switch (status) {
@@ -120,7 +147,16 @@ export default async function RiderDashboardPage() {
                     borderColor: 'border-blue-200 dark:border-blue-800',
                     textColor: 'text-blue-700 dark:text-blue-400',
                     dot: 'bg-blue-500',
-                    message: 'You have an active delivery'
+                    message: 'Pick up remaining assigned orders'
+                }
+            case 'delivering':
+                return {
+                    gradient: 'from-indigo-500 to-violet-600',
+                    bgLight: 'bg-indigo-50 dark:bg-indigo-950/30',
+                    borderColor: 'border-indigo-200 dark:border-indigo-800',
+                    textColor: 'text-indigo-700 dark:text-indigo-400',
+                    dot: 'bg-indigo-500',
+                    message: 'You are on the way to customers'
                 }
             case 'returning':
                 return {
@@ -158,10 +194,8 @@ export default async function RiderDashboardPage() {
     const showEmptyState = (!orders || orders.length === 0) && rider.status !== 'returning'
 
     return (
-        <RealtimeRiderOrders riderId={rider.id}>
-            <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
-                {/* Header with Glassmorphism */}
-                <header className="sticky top-0 z-50 border-b border-white/20 dark:border-gray-800/50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl">
+            <div className="min-h-screen bg-muted/30 pb-24">
+                <header className="sticky top-0 z-50 border-b border-border/60 bg-background/95 backdrop-blur">
                     <div className="max-w-lg mx-auto px-4 py-4">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
@@ -189,26 +223,50 @@ export default async function RiderDashboardPage() {
                 </header>
 
                 <div className="max-w-lg mx-auto px-4 py-6 space-y-6">
-                    {/* Status Card - Modern Design */}
-                    <div className={`relative overflow-hidden rounded-3xl border-2 ${statusConfig.borderColor} ${statusConfig.bgLight} p-6`}>
-                        <div className="relative flex items-center justify-between">
+                    <div className={`relative overflow-hidden rounded-2xl border ${statusConfig.borderColor} ${statusConfig.bgLight} p-4`}>
+                        <div className="flex items-center justify-between gap-3">
                             <div className="flex items-center gap-4">
                                 <div className="relative">
-                                    <div className={`w-4 h-4 rounded-full ${statusConfig.dot} animate-pulse`} />
-                                    <div className={`absolute inset-0 w-4 h-4 rounded-full ${statusConfig.dot} animate-ping opacity-75`} />
+                                    <div className={`h-4 w-4 rounded-full ${statusConfig.dot} animate-pulse`} />
+                                    <div className={`absolute inset-0 h-4 w-4 rounded-full ${statusConfig.dot} animate-ping opacity-75`} />
                                 </div>
                                 <div>
                                     <p className="font-bold text-lg text-gray-900 dark:text-white capitalize">
-                                        {rider.status === 'on_delivery' ? 'On Delivery' : rider.status}
+                                        {rider.status === 'on_delivery'
+                                            ? 'Pickup Phase'
+                                            : rider.status === 'delivering'
+                                                ? 'Delivering'
+                                                : rider.status}
                                     </p>
-                                    <p className={`text-sm ${statusConfig.textColor}`}>
-                                        {statusConfig.message}
-                                    </p>
+                                    <p className={`text-sm ${statusConfig.textColor}`}>{statusConfig.message}</p>
                                 </div>
                             </div>
                             <RiderStatusToggle
                                 riderId={rider.id}
                                 currentStatus={rider.status}
+                            />
+                        </div>
+                        <div
+                            className="absolute bottom-0 left-1/2 h-10 w-[70%] -translate-x-1/2 blur-2xl"
+                            style={{ background: 'rgba(16, 185, 129, 0.22)' }}
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="relative overflow-hidden rounded-xl border border-blue-200/70 bg-blue-50/60 p-3 dark:border-blue-900/50 dark:bg-blue-950/20">
+                            <p className="text-xs font-medium uppercase tracking-wide text-blue-700 dark:text-blue-300">Active Orders</p>
+                            <p className="mt-1 text-2xl font-bold text-blue-700 dark:text-blue-300">{activeOrderCount}</p>
+                            <div
+                                className="absolute bottom-0 left-1/2 h-8 w-[70%] -translate-x-1/2 blur-2xl"
+                                style={{ background: 'rgba(59, 130, 246, 0.2)' }}
+                            />
+                        </div>
+                        <div className="relative overflow-hidden rounded-xl border border-amber-200/70 bg-amber-50/60 p-3 dark:border-amber-900/50 dark:bg-amber-950/20">
+                            <p className="text-xs font-medium uppercase tracking-wide text-amber-700 dark:text-amber-300">Need Return</p>
+                            <p className="mt-1 text-2xl font-bold text-amber-700 dark:text-amber-300">{returnOrderCount}</p>
+                            <div
+                                className="absolute bottom-0 left-1/2 h-8 w-[70%] -translate-x-1/2 blur-2xl"
+                                style={{ background: 'rgba(245, 158, 11, 0.22)' }}
                             />
                         </div>
                     </div>
@@ -219,23 +277,17 @@ export default async function RiderDashboardPage() {
                     )}
 
                     {/* Active Deliveries Section */}
+                    {!(rider.status === 'returning' && activeOrderCount === 0) && (
                     <div>
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-                                <Package className="h-5 w-5 text-white" />
-                            </div>
-                            <div>
-                                <h2 className="font-bold text-lg text-gray-900 dark:text-white">
-                                    Active Deliveries
-                                </h2>
-                                <p className="text-sm text-gray-500 dark:text-gray-400">
-                                    {orders?.length || 0} order{(orders?.length || 0) !== 1 ? 's' : ''} pending
-                                </p>
-                            </div>
+                        <div className="mb-3">
+                            <h2 className="text-lg font-bold text-foreground">Active Deliveries</h2>
+                            <p className="text-sm text-muted-foreground">
+                                {orders?.length || 0} order{(orders?.length || 0) !== 1 ? 's' : ''} pending
+                            </p>
                         </div>
 
                         {showEmptyState ? (
-                            <div className="relative overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+                            <div className="relative overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800 bg-background">
                                 <div className="p-10 text-center">
                                     <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
                                         <Package className="h-8 w-8 text-gray-400 dark:text-gray-500" />
@@ -276,7 +328,6 @@ export default async function RiderDashboardPage() {
                                 {orders.map((order) => {
                                     const isPreparing = order.status === 'preparing'
                                     const isReady = order.status === 'ready'
-                                    const isOnTheWay = order.status === 'out_for_delivery'
                                     const isCancelled = order.status === 'cancelled'
                                     const isCOD = order.payment_method === 'cod'
 
@@ -288,7 +339,7 @@ export default async function RiderDashboardPage() {
                                         >
                                             <div
                                                 className={`
-                                                    relative overflow-hidden rounded-2xl border bg-white dark:bg-gray-900 
+                                                    relative overflow-hidden rounded-2xl border bg-background
                                                     shadow-sm hover:shadow-md transition-all
                                                     ${isPreparing ? 'opacity-70' : 'active:scale-[0.99]'}
                                                     ${isCancelled
@@ -397,8 +448,8 @@ export default async function RiderDashboardPage() {
                             </div>
                         ) : null}
                     </div>
+                    )}
                 </div>
             </div>
-        </RealtimeRiderOrders>
     )
 }

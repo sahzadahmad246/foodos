@@ -1,6 +1,3 @@
-import Link from 'next/link'
-import { Button } from '@/components/ui/button'
-import { UserDropdown } from '@/components/user-dropdown'
 import { createClient } from '@/lib/supabase/server'
 import { EmailChangeAlert } from '@/components/email-change-alert'
 import {
