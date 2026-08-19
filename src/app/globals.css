@@ -70,3 +70,10 @@
 .animate-pulse-border { animation: pulse-border 1s ease-in-out infinite; }
 @keyframes status-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
 .animate-status-active { animation: status-pulse 1.5s ease-in-out infinite; }
+
+.dashboard-shell { background-color: #f4f1e8; background-image: linear-gradient(rgba(16, 23, 21, .035) 1px, transparent 1px), linear-gradient(90deg, rgba(16, 23, 21, .035) 1px, transparent 1px); background-size: 32px 32px; }
+.dashboard-header { background: color-mix(in oklab, #f4f1e8 88%, transparent); backdrop-filter: blur(18px); }
+.dashboard-hero { background: #101715; background-image: radial-gradient(circle at 90% 15%, rgba(215, 243, 107, .14), transparent 28%), linear-gradient(135deg, transparent 0 60%, rgba(240, 127, 104, .08)); }
+.dashboard-card { background: rgba(255, 255, 255, .52); border: 1px solid rgba(16, 23, 21, .08); }
+.storefront { background-image: linear-gradient(rgba(16, 23, 21, .025) 1px, transparent 1px), linear-gradient(90deg, rgba(16, 23, 21, .025) 1px, transparent 1px); background-size: 40px 40px; }
+.storefront-hero { background-color: #f4f1e8; background-image: radial-gradient(circle at 80% 20%, rgba(215, 243, 107, .22), transparent 25%), radial-gradient(circle at 10% 100%, rgba(240, 127, 104, .12), transparent 24%); }

@@ -9,112 +9,17 @@ import { AddressSelector } from './address-selector'
 import { ProfileSidebar } from './profile-sidebar'
 import { User as SupabaseUser } from '@supabase/supabase-js'
 
-interface CustomerHeaderProps {
-    restaurant: {
-        name: string
-        logo_url?: string | null
-    }
-    user?: SupabaseUser | null
-}
+interface CustomerHeaderProps { restaurant: { name: string; logo_url?: string | null }; user?: SupabaseUser | null }
 
 export function CustomerHeader({ restaurant, user }: CustomerHeaderProps) {
     const [showAddressSelector, setShowAddressSelector] = useState(false)
     const [showProfileSidebar, setShowProfileSidebar] = useState(false)
     const { currentLocation, selectedAddress, isDetecting } = useLocation()
-
-    // Build location display text
-    let locationDisplay = 'Select location'
-
-    if (selectedAddress) {
-        // Show full address for saved addresses
-        locationDisplay = selectedAddress.flat_building || ''
-        if (selectedAddress.locality) {
-            locationDisplay += `, ${selectedAddress.locality}`
-        }
-    } else if (currentLocation?.locality) {
-        // Show just locality for detected location
-        locationDisplay = currentLocation.locality
-    }
-
-    return (
-        <>
-            <header className="sticky top-0 z-40 bg-background border-b">
-                <div className="w-full max-w-7xl mx-auto px-3 sm:px-4 py-2 flex items-center justify-between gap-2">
-                    {/* Logo & Name - Hidden on mobile */}
-                    <div className="hidden md:flex items-center gap-3 min-w-0 flex-shrink">
-                        {restaurant.logo_url && (
-                            <img
-                                src={restaurant.logo_url}
-                                alt={restaurant.name}
-                                className="h-10 w-10 rounded-full object-cover flex-shrink-0"
-                            />
-                        )}
-                        <h1 className="font-bold text-lg truncate">{restaurant.name}</h1>
-                    </div>
-
-                    {/* Location Display - Wraps on mobile, no box */}
-                    <button
-                        onClick={() => setShowAddressSelector(true)}
-                        className="flex items-start gap-1.5 flex-1 md:flex-initial md:max-w-xs min-w-0 text-left"
-                    >
-                        <MapPin className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-muted-foreground" />
-                        <div className="flex-1 min-w-0">
-                            <p className="text-xs leading-tight text-foreground line-clamp-2 break-words">
-                                {isDetecting ? 'Detecting location...' : locationDisplay}
-                            </p>
-                        </div>
-                        <ChevronDown className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-muted-foreground hidden sm:block" />
-                    </button>
-
-                    {/* Login / Profile */}
-                    {user ? (
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setShowProfileSidebar(true)}
-                            className="flex-shrink-0 h-9 w-9"
-                        >
-                            {user.user_metadata?.avatar_url ? (
-                                <img
-                                    src={user.user_metadata.avatar_url}
-                                    alt={user.user_metadata?.full_name || 'User'}
-                                    className="h-7 w-7 rounded-full"
-                                />
-                            ) : (
-                                <User className="h-4 w-4" />
-                            )}
-                        </Button>
-                    ) : (
-                        <Button
-                            asChild
-                            variant="default"
-                            size="sm"
-                            className="flex-shrink-0 h-9 px-3"
-                        >
-                            <Link href="/login">
-                                <LogIn className="h-3.5 w-3.5 sm:mr-2" />
-                                <span className="hidden sm:inline text-xs">Login</span>
-                            </Link>
-                        </Button>
-                    )}
-                </div>
-            </header>
-
-            {/* Address Selector Modal */}
-            <AddressSelector
-                open={showAddressSelector}
-                onClose={() => setShowAddressSelector(false)}
-                userId={user?.id}
-            />
-
-            {/* Profile Sidebar */}
-            {user && (
-                <ProfileSidebar
-                    open={showProfileSidebar}
-                    onClose={() => setShowProfileSidebar(false)}
-                    user={user}
-                />
-            )}
-        </>
-    )
+    let locationDisplay = 'Select delivery location'
+    if (selectedAddress) { locationDisplay = selectedAddress.flat_building || ''; if (selectedAddress.locality) locationDisplay += `, ${selectedAddress.locality}` } else if (currentLocation?.locality) locationDisplay = currentLocation.locality
+    return <>
+        <header className="storefront-header sticky top-0 z-40 border-b border-border/60 bg-background/90 backdrop-blur-xl"><div className="mx-auto flex h-[68px] max-w-7xl items-center justify-between gap-3 px-4 md:px-8"><div className="flex min-w-0 items-center gap-3"><div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-primary font-serif text-xl text-primary-foreground">{restaurant.logo_url ? <img src={restaurant.logo_url} alt={restaurant.name} className="size-full object-cover" /> : restaurant.name[0]}</div><h1 className="hidden truncate font-serif text-xl sm:block">{restaurant.name}</h1></div><button onClick={() => setShowAddressSelector(true)} className="flex min-w-0 max-w-[210px] items-center gap-2 rounded-full border border-border/70 bg-card px-3 py-2 text-left transition-colors hover:border-primary/50 sm:max-w-xs"><MapPin className="size-3.5 shrink-0 text-primary" /><span className="min-w-0 flex-1 truncate text-xs">{isDetecting ? 'Detecting location...' : locationDisplay}</span><ChevronDown className="size-3.5 shrink-0 text-muted-foreground" /></button>{user ? <Button variant="outline" size="icon" onClick={() => setShowProfileSidebar(true)} className="size-9 shrink-0 rounded-full">{user.user_metadata?.avatar_url ? <img src={user.user_metadata.avatar_url} alt={user.user_metadata?.full_name || 'User'} className="size-7 rounded-full" /> : <User className="size-4" />}</Button> : <Button asChild size="sm" className="shrink-0 rounded-full"><Link href="/login"><LogIn data-icon="inline-start" /><span className="hidden sm:inline">Login</span></Link></Button>}</div></header>
+        <AddressSelector open={showAddressSelector} onClose={() => setShowAddressSelector(false)} userId={user?.id} />
+        {user && <ProfileSidebar open={showProfileSidebar} onClose={() => setShowProfileSidebar(false)} user={user} />}
+    </>
 }
