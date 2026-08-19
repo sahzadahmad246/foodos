@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Playfair_Display } from "next/font/google";
+import { Geist, Geist_Mono, Newsreader, Playfair_Display } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { TopLoader } from "@/components/top-loader";
 import { QueryProvider } from "@/providers/query-provider";
