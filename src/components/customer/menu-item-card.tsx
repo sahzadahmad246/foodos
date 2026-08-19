@@ -1,11 +1,9 @@
 'use client'
 
-import { useState } from 'react'
 import Image from 'next/image'
 import { Plus, Leaf, Flame, Star } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useCart } from '@/hooks/use-cart'
 import { toast } from 'sonner'
 

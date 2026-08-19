@@ -4,244 +4,28 @@ import { useState } from 'react'
 import { Search, ShoppingCart, Sparkles } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
+import { CategoryTabs } from './category-tabs'
 import { MenuItemCard } from './menu-item-card'
 import { CartDrawer } from './cart-drawer'
 import { CustomerHeader } from './customer-header'
 import { LocationInitializer } from './location-initializer'
 import { useCart } from '@/hooks/use-cart'
-import { createClient } from '@/lib/supabase/client'
 import { User } from '@supabase/supabase-js'
-import Link from 'next/link'
 
 interface Restaurant { id: string; name: string; slug: string; description?: string; logo_url?: string | null; image_url?: string; phone?: string; address?: string }
 interface Category { id: string; name: string; description?: string | null }
 interface MenuItem { id: string; name: string; description?: string | null; price: number; category_id?: string | null; image_url?: string | null; is_veg: boolean; is_spicy: boolean; is_bestseller: boolean; is_featured: boolean }
 interface RestaurantMenuProps { restaurant: Restaurant; categories: Category[]; menuItems: MenuItem[]; user?: User | null }
 
-type FilterType = 'all' | 'veg' | 'nonveg' | 'spicy' | 'bestseller'
-type SortType = 'popular' | 'price_asc' | 'price_desc' | 'prep_asc'
-
-export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItems = [], activeOrders = [], user, mode = 'home' }: RestaurantMenuProps) {
+export function RestaurantMenu({ restaurant, categories, menuItems, user }: RestaurantMenuProps) {
     const [searchQuery, setSearchQuery] = useState('')
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
     const [isCartOpen, setIsCartOpen] = useState(false)
-    const [activeBottomTab, setActiveBottomTab] = useState<'home' | 'menu' | 'buy-again'>(
-        mode === 'menu' ? 'menu' : mode === 'buy-again' ? 'buy-again' : 'home'
-    )
-    const [filterType, setFilterType] = useState<FilterType>('all')
-    const [sortType, setSortType] = useState<SortType>('popular')
-    const [isFilterOpen, setIsFilterOpen] = useState(false)
-    const [isDesktop, setIsDesktop] = useState(false)
-    const [openCategoryIds, setOpenCategoryIds] = useState<Set<string>>(new Set())
-    const [featuredIndex, setFeaturedIndex] = useState(0)
-    const [compactStickyTabs, setCompactStickyTabs] = useState(false)
-    const [activeOrderIndex, setActiveOrderIndex] = useState(0)
-    const [liveActiveOrders, setLiveActiveOrders] = useState(activeOrders)
-    const BG_SLOT_MS = 10 * 60 * 1000
-    const topBgOptions = useMemo(
-        () => [
-            'bg-[#0b5d66]',
-            'bg-[#0b4b63]',
-            'bg-[#123d66]',
-            'bg-[#1c3a63]',
-        ],
-        []
-    )
-    const [bgIndex, setBgIndex] = useState(
-        () => Math.floor(Date.now() / BG_SLOT_MS) % topBgOptions.length
-    )
     const { items: cartItems } = useCart()
     const filteredItems = menuItems.filter(item => (!searchQuery || item.name.toLowerCase().includes(searchQuery.toLowerCase()) || item.description?.toLowerCase().includes(searchQuery.toLowerCase())) && (!selectedCategory || item.category_id === selectedCategory))
     const itemsByCategory = categories.map(category => ({ category, items: filteredItems.filter(item => item.category_id === category.id) })).filter(group => group.items.length > 0)
     const uncategorizedItems = filteredItems.filter(item => !item.category_id)
     const cartItemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0)
-    const cartPreviewItems = cartItems.slice(0, 3)
-    const showAppliedFilterChips = filterType !== 'all' || sortType !== 'popular'
-    const restaurantAddress = [
-        restaurant.address_line1,
-        restaurant.address_line2,
-        restaurant.city,
-        restaurant.state,
-        restaurant.pincode,
-    ].filter(Boolean).join(', ')
-    const directionsUrl =
-        restaurant.latitude !== null &&
-            restaurant.latitude !== undefined &&
-            restaurant.longitude !== null &&
-            restaurant.longitude !== undefined
-            ? `https://www.google.com/maps/dir/?api=1&destination=${restaurant.latitude},${restaurant.longitude}`
-            : restaurantAddress
-                ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(restaurantAddress)}`
-                : null
-    const activeOrderStatusLabel = useMemo(() => {
-        const current = liveActiveOrders[activeOrderIndex]
-        if (!current?.status) return null
-        const map: Record<string, string> = {
-            pending: 'Order placed',
-            confirmed: 'Order confirmed',
-            preparing: 'Order is preparing',
-            ready: 'Order is ready',
-            out_for_delivery: 'Order is on the way',
-        }
-        return map[current.status] || 'Order update'
-    }, [liveActiveOrders, activeOrderIndex])
-    const currentActiveOrder = liveActiveOrders[activeOrderIndex]
-
-    const scrollToSection = (type: 'home' | 'menu' | 'buy-again') => {
-        setActiveBottomTab(type)
-        if (type === 'home') homeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        if (type === 'menu') menuRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        if (type === 'buy-again') buyAgainRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }
-
-    useEffect(() => {
-        const updateViewport = () => setIsDesktop(window.innerWidth >= 1024)
-        updateViewport()
-        window.addEventListener('resize', updateViewport)
-        return () => window.removeEventListener('resize', updateViewport)
-    }, [])
-
-    useEffect(() => {
-        const onScroll = () => {
-            const y = window.scrollY
-            setCompactStickyTabs((prev) => {
-                // Hysteresis prevents rapid toggle/blink near threshold.
-                if (prev) return y > 80
-                return y > 140
-            })
-        }
-        onScroll()
-        window.addEventListener('scroll', onScroll, { passive: true })
-        return () => window.removeEventListener('scroll', onScroll)
-    }, [])
-
-    useEffect(() => {
-        const id = window.setInterval(() => {
-            setBgIndex(Math.floor(Date.now() / BG_SLOT_MS) % topBgOptions.length)
-        }, 60 * 1000)
-        return () => window.clearInterval(id)
-    }, [topBgOptions.length])
-
-    useEffect(() => {
-        if (featuredItems.length <= 1) return
-        const timer = window.setInterval(() => {
-            setFeaturedIndex((prev) => (prev + 1) % featuredItems.length)
-        }, 3500)
-
-        return () => window.clearInterval(timer)
-    }, [featuredItems.length])
-
-    useEffect(() => {
-        if (mode === 'menu') {
-            setActiveBottomTab('menu')
-            return
-        }
-        if (mode === 'buy-again') {
-            setActiveBottomTab('buy-again')
-            return
-        }
-        const sectionPairs: Array<{ key: 'home' | 'menu' | 'buy-again'; el: HTMLDivElement }> = []
-        if (homeRef.current) sectionPairs.push({ key: 'home', el: homeRef.current })
-        if (menuRef.current) sectionPairs.push({ key: 'menu', el: menuRef.current })
-        if (buyAgainRef.current) sectionPairs.push({ key: 'buy-again', el: buyAgainRef.current })
-
-        if (!sectionPairs.length) return
-
-        const observer = new IntersectionObserver(
-            (entries) => {
-                const visible = entries
-                    .filter((entry) => entry.isIntersecting)
-                    .sort((a, b) => b.intersectionRatio - a.intersectionRatio)
-
-                if (!visible.length) return
-                const current = sectionPairs.find((pair) => pair.el === visible[0].target)
-                if (current) setActiveBottomTab(current.key)
-            },
-            {
-                root: null,
-                threshold: [0.25, 0.5, 0.75],
-                rootMargin: '-20% 0px -45% 0px',
-            }
-        )
-
-        sectionPairs.forEach((pair) => observer.observe(pair.el))
-        return () => observer.disconnect()
-    }, [buyAgainMenuItems.length, mode])
-
-    useEffect(() => {
-        if (!selectedCategory) return
-        setOpenCategoryIds((prev) => new Set(prev).add(selectedCategory))
-    }, [selectedCategory])
-
-    useEffect(() => {
-        if (mode !== 'menu') return
-        setOpenCategoryIds(new Set(itemsByCategory.map(({ category }) => category.id)))
-    }, [mode, itemsByCategory])
-
-    useEffect(() => {
-        if (liveActiveOrders.length <= 1) return
-        const interval = window.setInterval(() => {
-            setActiveOrderIndex((prev) => (prev + 1) % liveActiveOrders.length)
-        }, 3500)
-        return () => window.clearInterval(interval)
-    }, [liveActiveOrders.length])
-
-    useEffect(() => {
-        if (activeOrderIndex >= liveActiveOrders.length) {
-            setActiveOrderIndex(0)
-        }
-    }, [activeOrderIndex, liveActiveOrders.length])
-
-    useEffect(() => {
-        setLiveActiveOrders(activeOrders)
-    }, [activeOrders])
-
-    useEffect(() => {
-        if (!user?.id) return
-
-        const supabase = createClient()
-        const allowedStatuses = ['pending', 'confirmed', 'preparing', 'ready', 'out_for_delivery']
-
-        const loadActiveOrders = async () => {
-            const { data } = await supabase
-                .from('orders')
-                .select('id, status, order_number')
-                .eq('user_id', user.id)
-                .in('status', allowedStatuses)
-                .order('created_at', { ascending: false })
-                .limit(5)
-
-            setLiveActiveOrders((data || []).map((order) => ({
-                id: order.id,
-                status: order.status,
-                order_number: order.order_number,
-            })))
-        }
-
-        void loadActiveOrders()
-
-        const channel = supabase
-            .channel(`customer-active-orders-${user.id}`)
-            .on(
-                'postgres_changes',
-                {
-                    event: '*',
-                    schema: 'public',
-                    table: 'orders',
-                    filter: `user_id=eq.${user.id}`,
-                },
-                () => {
-                    void loadActiveOrders()
-                }
-            )
-            .subscribe()
-
-        return () => {
-            supabase.removeChannel(channel)
-        }
-    }, [user?.id])
 
     return (
         <div className="storefront min-h-screen bg-background">
