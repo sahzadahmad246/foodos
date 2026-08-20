@@ -50,7 +50,7 @@ export function CartDrawer({ open, onClose, restaurant }: CartDrawerProps) {
                             onClick={onClose}
                             aria-label="Close cart"
                         >
-                            <X className="h-4 w-4 text-slate-600" />
+                            <X className="h-4 w-4 text-foreground/80" />
                         </Button>
                         <div className="min-w-0 flex-1 text-center">
                             <SheetTitle className="truncate text-lg font-bold text-foreground">Order Summary</SheetTitle>
@@ -69,7 +69,7 @@ export function CartDrawer({ open, onClose, restaurant }: CartDrawerProps) {
                                     clearCart()
                                     onClose()
                                 }}
-                                className="h-7 rounded-full px-3 text-xs font-medium text-muted-foreground hover:bg-slate-100 hover:text-slate-700"
+                                className="h-7 rounded-full px-3 text-xs font-semibold text-foreground/80 hover:bg-muted hover:text-foreground"
                             >
                                 Clear Cart
                             </Button>
@@ -112,7 +112,7 @@ export function CartDrawer({ open, onClose, restaurant }: CartDrawerProps) {
                                                 <p className="mt-0.5 text-xs text-muted-foreground">₹{item.price} each</p>
                                                 <button
                                                     type="button"
-                                                    className="mt-1 text-xs font-medium text-muted-foreground underline underline-offset-2"
+                                                    className="mt-1 text-xs font-semibold text-primary underline underline-offset-2 hover:text-primary/80"
                                                     onClick={() => removeItem(item.id)}
                                                 >
                                                     Remove
@@ -122,7 +122,7 @@ export function CartDrawer({ open, onClose, restaurant }: CartDrawerProps) {
                                                 <div className="inline-flex items-center overflow-hidden rounded-lg border border-border bg-muted/50">
                                                     <button
                                                         type="button"
-                                                        className="h-8 w-8 text-slate-700"
+                                                        className="h-8 w-8 text-foreground/90 transition-colors hover:bg-muted hover:text-primary"
                                                         onClick={() => item.quantity > 1 ? updateQuantity(item.id, item.quantity - 1) : removeItem(item.id)}
                                                     >
                                                         {item.quantity === 1 ? <Trash2 className="mx-auto h-3.5 w-3.5" /> : <Minus className="mx-auto h-3.5 w-3.5" />}
@@ -130,7 +130,7 @@ export function CartDrawer({ open, onClose, restaurant }: CartDrawerProps) {
                                                     <span className="w-8 text-center text-base font-semibold">{item.quantity}</span>
                                                     <button
                                                         type="button"
-                                                        className="h-8 w-8 text-slate-700"
+                                                        className="h-8 w-8 text-foreground/90 transition-colors hover:bg-muted hover:text-primary"
                                                         onClick={() => updateQuantity(item.id, item.quantity + 1)}
                                                     >
                                                         <Plus className="mx-auto h-3.5 w-3.5" />
@@ -143,7 +143,7 @@ export function CartDrawer({ open, onClose, restaurant }: CartDrawerProps) {
                                 ))}
                                 </div>
                                 <div className="border-t px-4 py-3">
-                                    <Link href={`/r/${restaurant.slug}/menu`} className="text-sm font-semibold text-slate-800">
+                                    <Link href={`/r/${restaurant.slug}/menu`} className="text-sm font-semibold text-primary underline-offset-4 hover:underline">
                                         + Add more items
                                     </Link>
                                 </div>
@@ -153,10 +153,10 @@ export function CartDrawer({ open, onClose, restaurant }: CartDrawerProps) {
                         <div className="flex flex-col gap-4 border-t border-border/70 bg-background px-5 py-4">
                             <div className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card/70 p-3">
                                 <div className="flex justify-between items-center text-sm">
-                                    <span className="text-slate-600">Item Total</span>
+                                    <span className="font-medium text-foreground/80">Item Total</span>
                                     <span className="font-medium text-foreground">₹{total.toFixed(0)}</span>
                                 </div>
-                                <div className="flex items-center justify-between border-t border-slate-200 pt-3">
+                                <div className="flex items-center justify-between border-t border-border/80 pt-3">
                                     <div className="flex items-center gap-2 text-base font-bold text-foreground">
                                         <span>Total Bill</span>
                                         {savedAmount > 0 ? (
