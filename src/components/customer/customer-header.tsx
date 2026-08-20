@@ -58,8 +58,8 @@ export function CustomerHeader({ restaurant, user }: CustomerHeaderProps) {
 
     return (
         <>
-            <header className={`relative z-30 overflow-hidden text-white transition-colors duration-700 ${headerBgOptions[bgIndex]}`}>
-                <div className="relative mx-auto w-full px-3 py-4 min-h-[74px] flex items-center justify-between gap-3 sm:px-4 sm:py-5">
+            <header className="relative z-30 overflow-hidden border-b border-border/70 bg-background text-foreground">
+                <div className="relative mx-auto flex min-h-[82px] w-full items-center justify-between gap-3 px-4 py-5 sm:px-5">
                     <div className="flex flex-1 min-w-0 items-start gap-2">
                         <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0 text-white/80" />
                         <div className="min-w-0">

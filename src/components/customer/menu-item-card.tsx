@@ -61,7 +61,7 @@ export function MenuItemCard({ item }: MenuItemCardProps) {
     return (
         <>
             <div
-                className="group overflow-hidden rounded-2xl border border-border/70 bg-card transition hover:-translate-y-0.5 hover:shadow-lg"
+                className="group overflow-hidden rounded-xl border border-border/70 bg-card/70 transition hover:-translate-y-0.5 hover:border-primary/50 hover:bg-card hover:shadow-lg"
                 onClick={() => setOpen(true)}
                 role="button"
                 tabIndex={0}
