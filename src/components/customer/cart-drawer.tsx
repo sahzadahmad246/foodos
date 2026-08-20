@@ -39,8 +39,8 @@ export function CartDrawer({ open, onClose, restaurant }: CartDrawerProps) {
 
     return (
         <Sheet open={open} onOpenChange={onClose}>
-            <SheetContent side="right" className="flex w-full flex-col bg-[#f4f5f7] p-0 sm:max-w-lg [&>button]:hidden">
-                <div className="border-b border-slate-200 bg-white px-4 py-4">
+            <SheetContent side="right" className="flex w-full flex-col bg-background p-0 text-foreground sm:max-w-lg [&>button]:hidden">
+                <div className="border-b border-border/70 bg-background px-4 py-4">
                     <div className="flex items-center justify-between gap-3">
                         <Button
                             type="button"
@@ -53,8 +53,8 @@ export function CartDrawer({ open, onClose, restaurant }: CartDrawerProps) {
                             <X className="h-4 w-4 text-slate-600" />
                         </Button>
                         <div className="min-w-0 flex-1 text-center">
-                            <SheetTitle className="truncate text-lg font-bold text-slate-900">Order Summary</SheetTitle>
-                            <p className="mt-0.5 text-xs text-slate-500">
+                            <SheetTitle className="truncate text-lg font-bold text-foreground">Order Summary</SheetTitle>
+                            <p className="mt-0.5 text-xs text-muted-foreground">
                                 {itemCount} {itemCount === 1 ? 'item' : 'items'}
                             </p>
                         </div>
@@ -69,7 +69,7 @@ export function CartDrawer({ open, onClose, restaurant }: CartDrawerProps) {
                                     clearCart()
                                     onClose()
                                 }}
-                                className="h-7 rounded-full px-3 text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                                className="h-7 rounded-full px-3 text-xs font-medium text-muted-foreground hover:bg-slate-100 hover:text-slate-700"
                             >
                                 Clear Cart
                             </Button>
@@ -79,11 +79,11 @@ export function CartDrawer({ open, onClose, restaurant }: CartDrawerProps) {
 
                 {items.length === 0 ? (
                     <div className="flex flex-1 flex-col items-center justify-center px-6 py-12 text-center">
-                        <div className="mb-4 rounded-2xl bg-white p-4">
+                        <div className="mb-4 rounded-2xl bg-card p-4">
                             <ShoppingBag className="mx-auto h-12 w-12 text-slate-400" />
                         </div>
-                        <h3 className="mb-2 text-lg font-bold text-slate-900">Your cart is empty</h3>
-                        <p className="mb-6 max-w-xs text-sm text-slate-500">
+                        <h3 className="mb-2 text-lg font-bold text-foreground">Your cart is empty</h3>
+                        <p className="mb-6 max-w-xs text-sm text-muted-foreground">
                             Start adding items from the menu to place your order
                         </p>
                         <Button onClick={onClose} className="h-10 rounded-xl bg-emerald-600 px-6 text-white hover:bg-emerald-700">
@@ -93,9 +93,9 @@ export function CartDrawer({ open, onClose, restaurant }: CartDrawerProps) {
                 ) : (
                     <>
                         <ScrollArea className="flex-1 px-5 py-4">
-                            <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
+                            <div className="overflow-hidden rounded-xl border border-border/70 bg-card/70 shadow-sm">
                                 <div className="px-4 py-4">
-                                    <h3 className="font-semibold text-slate-900">Your items ({items.length})</h3>
+                                    <h3 className="font-semibold text-foreground">Your items ({items.length})</h3>
                                 </div>
                                 <div className="divide-y">
                                 {items.map((item) => (
@@ -108,18 +108,18 @@ export function CartDrawer({ open, onClose, restaurant }: CartDrawerProps) {
                                                 <div className={`h-full w-full rounded-[2px] ${item.is_veg ? 'bg-emerald-600' : 'bg-rose-600'}`} />
                                             </div>
                                             <div className="min-w-0 flex-1">
-                                                <p className="line-clamp-1 text-[15px] font-medium text-slate-900">{item.name}</p>
+                                                <p className="line-clamp-1 text-[15px] font-medium text-foreground">{item.name}</p>
                                                 <p className="mt-0.5 text-xs text-muted-foreground">₹{item.price} each</p>
                                                 <button
                                                     type="button"
-                                                    className="mt-1 text-xs font-medium text-slate-500 underline underline-offset-2"
+                                                    className="mt-1 text-xs font-medium text-muted-foreground underline underline-offset-2"
                                                     onClick={() => removeItem(item.id)}
                                                 >
                                                     Remove
                                                 </button>
                                             </div>
                                             <div className="text-right">
-                                                <div className="inline-flex items-center overflow-hidden rounded-xl border border-slate-300 bg-white">
+                                                <div className="inline-flex items-center overflow-hidden rounded-lg border border-border bg-muted/50">
                                                     <button
                                                         type="button"
                                                         className="h-8 w-8 text-slate-700"
@@ -136,7 +136,7 @@ export function CartDrawer({ open, onClose, restaurant }: CartDrawerProps) {
                                                         <Plus className="mx-auto h-3.5 w-3.5" />
                                                     </button>
                                                 </div>
-                                                <p className="mt-1.5 text-lg font-semibold text-slate-900">₹{(item.price * item.quantity).toFixed(0)}</p>
+                                                <p className="mt-1.5 text-lg font-semibold text-foreground">₹{(item.price * item.quantity).toFixed(0)}</p>
                                             </div>
                                         </div>
                                     </div>
@@ -150,14 +150,14 @@ export function CartDrawer({ open, onClose, restaurant }: CartDrawerProps) {
                             </div>
                         </ScrollArea>
 
-                        <div className="space-y-4 border-t border-slate-200 bg-white px-5 py-4">
-                            <div className="space-y-3 rounded-2xl bg-slate-50 p-3">
+                        <div className="flex flex-col gap-4 border-t border-border/70 bg-background px-5 py-4">
+                            <div className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card/70 p-3">
                                 <div className="flex justify-between items-center text-sm">
                                     <span className="text-slate-600">Item Total</span>
-                                    <span className="font-medium text-slate-900">₹{total.toFixed(0)}</span>
+                                    <span className="font-medium text-foreground">₹{total.toFixed(0)}</span>
                                 </div>
                                 <div className="flex items-center justify-between border-t border-slate-200 pt-3">
-                                    <div className="flex items-center gap-2 text-base font-bold text-slate-900">
+                                    <div className="flex items-center gap-2 text-base font-bold text-foreground">
                                         <span>Total Bill</span>
                                         {savedAmount > 0 ? (
                                             <span className="rounded-full bg-[#dcebff] px-2 py-0.5 text-xs font-semibold text-[#1e5fbf]">
@@ -169,7 +169,7 @@ export function CartDrawer({ open, onClose, restaurant }: CartDrawerProps) {
                                         {savedAmount > 0 ? (
                                             <p className="text-xs text-muted-foreground line-through">₹{compareTotal.toFixed(0)}</p>
                                         ) : null}
-                                        <p className="text-lg font-bold text-slate-900">₹{total.toFixed(0)}</p>
+                                        <p className="text-lg font-bold text-foreground">₹{total.toFixed(0)}</p>
                                     </div>
                                 </div>
                             </div>
@@ -182,10 +182,10 @@ export function CartDrawer({ open, onClose, restaurant }: CartDrawerProps) {
 
                             <Button
                                 asChild
-                                className={`h-12 w-full rounded-xl font-semibold text-base transition-all ${
+                                className={`h-12 w-full rounded-lg font-semibold text-base transition-all ${
                                     restaurant.is_online === false
-                                        ? 'cursor-not-allowed bg-slate-200 text-slate-400'
-                                        : 'bg-slate-900 text-white hover:bg-slate-800'
+                                        ? 'cursor-not-allowed bg-muted text-muted-foreground'
+                                        : 'bg-primary text-primary-foreground hover:bg-primary/90'
                                 }`}
                                 disabled={restaurant.is_online === false}
                             >
