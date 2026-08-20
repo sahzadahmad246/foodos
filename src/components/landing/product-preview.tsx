@@ -1,116 +1,15 @@
-function KotSlip({
-    no,
-    table,
-    name,
-    lines,
-    time,
-    pay,
-    rotate,
-    z,
-}: {
-    no: string
-    table: string
-    name: string
-    lines: string[]
-    time: string
-    pay: string
-    rotate: string
-    z: string
-}) {
-    return (
-        <article
-            className={`absolute w-[228px] bg-[#f6efd8] px-4 pb-4 pt-3 text-[#1c1410] shadow-[4px_10px_24px_rgba(28,20,16,0.18)] sm:w-[242px] ${rotate} ${z}`}
-        >
-            <div className="mb-3 border-b border-dashed border-[#1c1410]/30 pb-2">
-                <div className="flex items-center justify-between font-mono text-[10px] tracking-widest uppercase text-[#1c1410]/55">
-                    <span>KOT {no}</span>
-                    <span>{table}</span>
-                </div>
-            </div>
-            <p className="font-serif text-xl leading-none">{name}</p>
-            <ul className="mt-3 space-y-1 font-mono text-[11px] leading-relaxed text-[#1c1410]/80">
-                {lines.map((line) => (
-                    <li key={line}>{line}</li>
-                ))}
-            </ul>
-            <div className="mt-4 flex items-center justify-between border-t border-dashed border-[#1c1410]/30 pt-2 font-mono text-[10px] uppercase tracking-wider text-[#1c1410]/55">
-                <span>{time}</span>
-                <span>{pay}</span>
-            </div>
-        </article>
-    )
-}
+import { Check, Clock3, MoreHorizontal, TrendingUp, Utensils } from 'lucide-react'
 
-export function TicketStack() {
-    return (
-        <div className="relative mx-auto h-[400px] w-full max-w-[520px] sm:h-[460px]">
-            <KotSlip
-                no="1038"
-                table="Tbl 04"
-                name="Farhan"
-                lines={['1  Chicken dum biryani', '1  Mirchi ka salan', '1  Burani raita']}
-                time="8:11 pm"
-                pay="Paid"
-                rotate="-rotate-[8deg] left-0 top-8"
-                z="z-10"
-            />
-            <KotSlip
-                no="1040"
-                table="Deliv."
-                name="Priya S."
-                lines={['1  Hyderabadi biryani', '2  Rumali roti', '1  Sweet lassi']}
-                time="8:29 pm"
-                pay="COD"
-                rotate="rotate-[4deg] right-2 top-2"
-                z="z-20"
-            />
-            <KotSlip
-                no="1042"
-                table="New"
-                name="Ayesha K."
-                lines={['1  Butter chicken', '2  Garlic naan', '1  Masala coke']}
-                time="8:42 pm"
-                pay="COD"
-                rotate="-rotate-[2deg] left-8 top-[7.5rem]"
-                z="z-30"
-            />
-        </div>
-    )
-}
-
-const BOARD_TICKETS = [
-    { id: '1042', name: 'Ayesha K.', items: 'Butter chicken, garlic naan ×2', amount: '₹420', col: 'New', wait: '2m' },
-    { id: '1041', name: 'Rahul M.', items: 'Paneer tikka, coke', amount: '₹310', col: 'Prep', wait: '11m' },
-    { id: '1040', name: 'Priya S.', items: 'Biryani, raita', amount: '₹280', col: 'Pass', wait: 'Ready' },
-    { id: '1039', name: 'Imran', items: 'Mutton nihari, khameeri', amount: '₹540', col: 'Out', wait: 'Rider' },
+const orders = [
+  { id: '#1042', name: 'Ayesha Khan', items: 'Butter chicken · Garlic naan ×2', total: '₹420', status: 'Preparing', tone: 'bg-accent text-accent-foreground' },
+  { id: '#1041', name: 'Rahul Mehta', items: 'Paneer tikka · Masala coke', total: '₹310', status: 'Ready', tone: 'bg-primary text-primary-foreground' },
+  { id: '#1040', name: 'Priya Shah', items: 'Hyderabadi biryani · Raita', total: '₹280', status: 'On the way', tone: 'bg-secondary text-secondary-foreground' },
 ]
 
+export function TicketStack() {
+  return <div className="relative mx-auto flex min-h-[420px] max-w-[560px] items-center justify-center"><div className="absolute inset-x-6 top-8 h-72 rotate-[-4deg] rounded-[2rem] border border-primary/10 bg-primary/5" /><div className="absolute inset-x-3 top-4 h-72 rotate-[3deg] rounded-[2rem] border border-primary/10 bg-card/80" /><div className="relative w-full overflow-hidden rounded-[2rem] border border-border bg-card p-5 shadow-2xl shadow-primary/10"><div className="flex items-center justify-between border-b border-border pb-5"><div className="flex items-center gap-3"><div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Utensils /></div><div><p className="text-sm font-semibold">Good morning, Farhan</p><p className="text-xs text-muted-foreground">Tuesday, 20 August · Main kitchen</p></div></div><MoreHorizontal className="text-muted-foreground" /></div><div className="grid grid-cols-3 gap-3 py-5"><div><p className="text-xs text-muted-foreground">Today&apos;s sales</p><p className="mt-1 text-xl font-semibold">₹24,680</p><p className="mt-1 flex items-center gap-1 text-xs text-primary"><TrendingUp className="size-3" /> 18.4%</p></div><div><p className="text-xs text-muted-foreground">Orders</p><p className="mt-1 text-xl font-semibold">48</p><p className="mt-1 text-xs text-muted-foreground">+6 from yesterday</p></div><div><p className="text-xs text-muted-foreground">Avg. prep</p><p className="mt-1 text-xl font-semibold">18m</p><p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground"><Clock3 className="size-3" /> 4m faster</p></div></div><div className="flex items-center justify-between border-b border-border pb-3"><p className="text-sm font-semibold">Live orders</p><span className="flex items-center gap-1.5 text-xs text-primary"><span className="size-1.5 rounded-full bg-primary" /> Kitchen live</span></div><div className="flex flex-col divide-y divide-border">{orders.map((order) => <div key={order.id} className="flex items-center gap-3 py-4"><div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary text-xs font-semibold">{order.id.slice(1)}</div><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{order.name}</p><p className="truncate text-xs text-muted-foreground">{order.items}</p></div><div className="text-right"><p className="text-sm font-semibold">{order.total}</p><span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${order.tone}`}>{order.status}</span></div></div>)}</div></div></div>
+}
+
 export function KitchenPass() {
-    return (
-        <div className="border border-white/10 bg-[#171310] text-[#f3ead8]">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-5 py-4">
-                <div>
-                    <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#f3ead8]/45">Pass · Pyare Mohan</p>
-                    <p className="mt-1 font-serif text-2xl">Tonight’s service</p>
-                </div>
-                <p className="font-mono text-[11px] text-emerald-400/90">● kitchen live · 8:44 pm</p>
-            </div>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4">
-                {BOARD_TICKETS.map((ticket) => (
-                    <article key={ticket.id} className="border-t border-white/10 p-5 sm:border-l sm:border-t-0 sm:first:border-l-0 lg:border-l lg:first:border-l-0">
-                        <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-widest text-[#f3ead8]/45">
-                            <span>#{ticket.id}</span>
-                            <span>{ticket.col}</span>
-                        </div>
-                        <p className="mt-4 font-serif text-2xl leading-none">{ticket.name}</p>
-                        <p className="mt-3 text-sm leading-relaxed text-[#f3ead8]/65">{ticket.items}</p>
-                        <div className="mt-6 flex items-end justify-between">
-                            <span className="font-mono text-sm">{ticket.amount}</span>
-                            <span className="font-mono text-[11px] text-[#e3b341]">{ticket.wait}</span>
-                        </div>
-                    </article>
-                ))}
-            </div>
-        </div>
-    )
+  return <div className="grid gap-4 md:grid-cols-[1.2fr_0.8fr]"><div className="rounded-2xl border border-border bg-card p-5"><div className="flex items-center justify-between"><div><p className="text-sm font-semibold">Order flow</p><p className="text-xs text-muted-foreground">Everything moving, nothing missed</p></div><span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">Live</span></div><div className="mt-6 flex items-end gap-2"><div className="h-20 flex-1 rounded-t-lg bg-primary/30" /><div className="h-28 flex-1 rounded-t-lg bg-primary/45" /><div className="h-24 flex-1 rounded-t-lg bg-primary/60" /><div className="h-36 flex-1 rounded-t-lg bg-primary" /><div className="h-32 flex-1 rounded-t-lg bg-primary/70" /><div className="h-44 flex-1 rounded-t-lg bg-primary" /><div className="h-40 flex-1 rounded-t-lg bg-primary/80" /></div><div className="mt-3 flex justify-between text-[10px] text-muted-foreground"><span>10am</span><span>2pm</span><span>6pm</span><span>Now</span></div></div><div className="rounded-2xl border border-border bg-card p-5"><p className="text-sm font-semibold">Kitchen pulse</p><p className="mt-1 text-xs text-muted-foreground">Current service status</p><div className="mt-7 flex items-center gap-3"><div className="flex size-11 items-center justify-center rounded-full bg-primary/10 text-primary"><Check /></div><div><p className="text-2xl font-semibold">92%</p><p className="text-xs text-muted-foreground">orders on time</p></div></div><div className="mt-6 h-2 overflow-hidden rounded-full bg-secondary"><div className="h-full w-[92%] rounded-full bg-primary" /></div></div></div>
 }
