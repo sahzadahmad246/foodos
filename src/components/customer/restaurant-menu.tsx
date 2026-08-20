@@ -393,7 +393,7 @@ export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItem
     }, [user?.id])
 
     return (
-        <div className="mx-auto min-h-screen w-full max-w-lg bg-gradient-to-b from-background via-background to-muted/20 md:shadow-[0_0_0_1px_hsl(var(--border)),0_18px_45px_-20px_rgba(0,0,0,0.45)]">
+        <div className="mx-auto min-h-screen w-full max-w-lg border-x border-border/60 bg-background text-foreground md:shadow-[0_0_0_1px_hsl(var(--border)),0_18px_45px_-20px_rgba(0,0,0,0.45)]">
             <LocationInitializer userId={user?.id} />
             {mode === 'home' ? <CustomerHeader restaurant={restaurant} user={user} /> : null}
 
@@ -412,7 +412,7 @@ export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItem
                         ? 'pb-44'
                         : 'pb-32'
             }`}>
-                <section className={`sticky top-0 z-30 -mx-4 overflow-hidden px-4 pb-5 pt-3 transition-colors duration-700 ${mode === 'home' ? topBgOptions[bgIndex] : 'bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80'}`}>
+                <section className="sticky top-0 z-30 -mx-4 overflow-hidden border-b border-border/70 bg-background/95 px-4 pb-5 pt-3 backdrop-blur supports-[backdrop-filter]:bg-background/85">
                     <div className="relative">
                     <div className="flex gap-2">
                         <div className="relative flex-1">
@@ -422,13 +422,13 @@ export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItem
                                 placeholder="Search dishes..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className={`h-12 rounded-xl pl-9 ${mode === 'home' ? 'border-white/50 bg-white text-black' : 'border-border bg-card text-foreground shadow-sm'}`}
+                                className="h-12 rounded-lg border-border/80 bg-card/70 pl-9 text-foreground shadow-none placeholder:text-muted-foreground focus-visible:ring-primary/40"
                             />
                         </div>
                         <Button
                             type="button"
                             variant="outline"
-                            className={`h-12 shrink-0 gap-2 rounded-xl ${mode === 'home' ? 'border-white/60 bg-white text-teal-900 hover:bg-white' : 'border-border bg-card text-foreground shadow-sm hover:bg-muted'}`}
+                            className="h-12 shrink-0 gap-2 rounded-lg border-border/80 bg-card/70 text-foreground shadow-none hover:bg-muted"
                             onClick={() => setIsFilterOpen(true)}
                         >
                             <SlidersHorizontal className="h-4 w-4" />
