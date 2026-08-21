@@ -58,22 +58,20 @@ export default async function CheckoutPage({ params }: PageProps) {
 
     if (!restaurant.is_online) {
         return (
-            <div className="min-h-screen bg-background">
-                <div className="max-w-xl mx-auto px-4 py-16">
-                    <div className="rounded-xl border border-amber-300 bg-amber-50 p-6 text-center">
-                        <h1 className="text-xl font-semibold text-amber-900">Restaurant is not accepting orders</h1>
-                        <p className="mt-2 text-sm text-amber-800">
-                            This restaurant is currently offline. Please try again later.
-                        </p>
-                    </div>
+            <div className="mx-auto min-h-screen w-full max-w-lg px-4 py-16">
+                <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-6 text-center">
+                    <h1 className="text-xl font-semibold text-amber-200">Restaurant is not accepting orders</h1>
+                    <p className="mt-2 text-sm text-amber-200/80">
+                        This restaurant is currently offline. Please try again later.
+                    </p>
                 </div>
             </div>
         )
     }
 
     return (
-        <div className="min-h-screen bg-[#f4f5f7]">
-            <div className="max-w-xl mx-auto px-4">
+        <div className="mx-auto min-h-screen w-full max-w-lg">
+            <div className="px-4">
                 <CheckoutForm
                     restaurant={restaurant}
                     userId={user?.id}

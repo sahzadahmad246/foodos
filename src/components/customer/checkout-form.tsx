@@ -274,7 +274,7 @@ export function CheckoutForm({ restaurant, userId, savedAddresses, suggestedItem
                     name: selectedAddress?.person_name || '',
                     contact: selectedAddress?.mobile || '',
                 },
-                theme: { color: '#000000' },
+                theme: { color: '#6fdc4a' },
             }
 
             const razorpay = new window.Razorpay(options)
@@ -352,10 +352,10 @@ export function CheckoutForm({ restaurant, userId, savedAddresses, suggestedItem
             <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
 
             {/* Header */}
-            <div className="sticky top-0 z-20 -mx-4 mb-3 border-b bg-white px-4">
+            <div className="sticky top-0 z-20 -mx-4 mb-3 border-b border-border/70 bg-background/95 px-4 backdrop-blur">
                 <div className="flex items-center gap-3 py-4">
                     <Link href={`/r/${restaurant.slug}`}>
-                        <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0 rounded-full">
+                        <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0 rounded-full text-foreground hover:bg-muted">
                             <ArrowLeft className="h-5 w-5" />
                         </Button>
                     </Link>
@@ -370,7 +370,7 @@ export function CheckoutForm({ restaurant, userId, savedAddresses, suggestedItem
                             />
                         )}
                         <div className="min-w-0">
-                            <h1 className="truncate text-lg font-bold">{restaurant.name}</h1>
+                            <h1 className="truncate text-lg font-bold text-foreground">{restaurant.name}</h1>
                             <p className="text-xs text-muted-foreground">
                                 {orderType === 'delivery' ? 'Delivery in 30-35 mins' : 'Pickup order'}
                                 {orderType === 'delivery' && selectedAddress?.address_type ? ` • ${selectedAddress.address_type}` : ''}
@@ -382,18 +382,18 @@ export function CheckoutForm({ restaurant, userId, savedAddresses, suggestedItem
 
             <form onSubmit={handleSubmit} className="space-y-3 pb-32 lg:pb-8">
                 {isRestaurantOffline && (
-                    <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                    <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
                         Restaurant is not accepting orders currently.
                     </div>
                 )}
 
                 {/* Order Type */}
-                <div className="grid grid-cols-2 gap-2 rounded-2xl bg-muted/50 p-1">
+                <div className="grid grid-cols-2 gap-2 rounded-xl border border-border/70 bg-card/70 p-1">
                     <button
                         type="button"
                         onClick={() => setOrderType('delivery')}
-                        className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium transition ${orderType === 'delivery'
-                            ? 'bg-background text-foreground shadow-sm'
+                        className={`flex items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition ${orderType === 'delivery'
+                            ? 'bg-primary text-primary-foreground shadow-sm'
                             : 'text-muted-foreground hover:text-foreground'
                             }`}
                     >
@@ -403,8 +403,8 @@ export function CheckoutForm({ restaurant, userId, savedAddresses, suggestedItem
                     <button
                         type="button"
                         onClick={() => setOrderType('pickup')}
-                        className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium transition ${orderType === 'pickup'
-                            ? 'bg-background text-foreground shadow-sm'
+                        className={`flex items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition ${orderType === 'pickup'
+                            ? 'bg-primary text-primary-foreground shadow-sm'
                             : 'text-muted-foreground hover:text-foreground'
                             }`}
                     >
@@ -414,64 +414,64 @@ export function CheckoutForm({ restaurant, userId, savedAddresses, suggestedItem
                 </div>
 
                 {/* Cart Items */}
-                <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
+                <div className="overflow-hidden rounded-xl border border-border/70 bg-card/70 shadow-sm">
                     <div className="px-4 py-4">
-                        <h3 className="font-semibold">Your items ({items.length})</h3>
+                        <h3 className="font-semibold text-foreground">Your items ({items.length})</h3>
                     </div>
-                    <div className="divide-y">
+                    <div className="divide-y divide-border/70">
                         {items.map((item) => (
                             <div key={item.id} className="p-4">
                                 <div className="flex items-start gap-3">
-                                    <div className="mt-1 h-4 w-4 rounded-sm border-2 border-emerald-600 p-[2px]">
-                                        <div className="h-full w-full rounded-[2px] bg-emerald-600" />
+                                    <div className="mt-1 h-4 w-4 rounded-sm border-2 border-emerald-500 p-[2px]">
+                                        <div className="h-full w-full rounded-[2px] bg-emerald-500" />
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                        <p className="line-clamp-1 text-[15px] font-medium">{item.name}</p>
+                                        <p className="line-clamp-1 text-[15px] font-medium text-foreground">{item.name}</p>
                                         <p className="mt-0.5 text-xs text-muted-foreground">₹{item.price} each</p>
                                         <button
                                             type="button"
-                                            className="mt-1 text-xs font-medium text-slate-500 underline underline-offset-2"
+                                            className="mt-1 text-xs font-semibold text-primary underline underline-offset-2 hover:text-primary/80"
                                             onClick={() => removeItem(item.id)}
                                         >
                                             Remove
                                         </button>
                                     </div>
                                     <div className="text-right">
-                                        <div className="inline-flex items-center overflow-hidden rounded-xl border border-slate-300 bg-white">
+                                        <div className="inline-flex items-center overflow-hidden rounded-lg border border-border bg-muted/50">
                                             <button
                                                 type="button"
-                                                className="h-8 w-8 text-slate-700"
+                                                className="h-8 w-8 text-foreground/90 transition-colors hover:bg-muted hover:text-primary"
                                                 onClick={() => item.quantity > 1 ? updateQuantity(item.id, item.quantity - 1) : removeItem(item.id)}
                                             >
                                                 {item.quantity === 1 ? <Trash2 className="mx-auto h-3.5 w-3.5" /> : <Minus className="mx-auto h-3.5 w-3.5" />}
                                             </button>
-                                            <span className="w-8 text-center text-base font-semibold">{item.quantity}</span>
+                                            <span className="w-8 text-center text-base font-semibold text-foreground">{item.quantity}</span>
                                             <button
                                                 type="button"
-                                                className="h-8 w-8 text-slate-700"
+                                                className="h-8 w-8 text-foreground/90 transition-colors hover:bg-muted hover:text-primary"
                                                 onClick={() => updateQuantity(item.id, item.quantity + 1)}
                                             >
                                                 <Plus className="mx-auto h-3.5 w-3.5" />
                                             </button>
                                         </div>
-                                        <p className="mt-1.5 text-lg font-semibold">₹{(item.price * item.quantity).toFixed(0)}</p>
+                                        <p className="mt-1.5 text-lg font-semibold text-foreground">₹{(item.price * item.quantity).toFixed(0)}</p>
                                     </div>
                                 </div>
                             </div>
                         ))}
                     </div>
-                    <div className="border-t px-4 py-3">
-                        <Link href={`/r/${restaurant.slug}/menu`} className="text-sm font-semibold text-slate-800">
+                    <div className="border-t border-border/70 px-4 py-3">
+                        <Link href={`/r/${restaurant.slug}/menu`} className="text-sm font-semibold text-primary underline-offset-4 hover:underline">
                             + Add more items
                         </Link>
                     </div>
-                    <div className="flex flex-wrap gap-2 border-t p-3">
+                    <div className="flex flex-wrap gap-2 border-t border-border/70 p-3">
                         <button
                             type="button"
                             className={`rounded-full border px-3 py-2 text-left text-sm transition ${
                                 notes.trim().length
-                                    ? 'border-slate-900 bg-slate-900 text-white'
-                                    : 'border-slate-300 text-slate-700'
+                                    ? 'border-primary bg-primary text-primary-foreground'
+                                    : 'border-border text-foreground/80 hover:bg-muted'
                             }`}
                             onClick={() => setIsNotesDialogOpen(true)}
                         >
@@ -481,8 +481,8 @@ export function CheckoutForm({ restaurant, userId, savedAddresses, suggestedItem
                             type="button"
                             className={`rounded-full border px-3 py-2 text-left text-sm transition ${
                                 notes.includes('Please send cutlery.')
-                                    ? 'border-slate-900 bg-slate-900 text-white'
-                                    : 'border-slate-300 text-slate-700'
+                                    ? 'border-primary bg-primary text-primary-foreground'
+                                    : 'border-border text-foreground/80 hover:bg-muted'
                             }`}
                             onClick={toggleCutleryNote}
                         >
@@ -490,17 +490,17 @@ export function CheckoutForm({ restaurant, userId, savedAddresses, suggestedItem
                         </button>
                     </div>
                     {notes.trim().length > 0 && (
-                        <div className="border-t bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                        <div className="border-t border-border/70 bg-muted/40 px-3 py-2 text-sm text-foreground/80">
                             {notes}
                         </div>
                     )}
                 </div>
 
                 {availableSuggestions.length > 0 && (
-                    <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+                    <div className="rounded-xl border border-border/70 bg-card/70 p-4 shadow-sm">
                         <div className="mb-3 flex items-center gap-2">
-                            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-muted text-slate-700">✣</span>
-                            <h3 className="font-semibold">Complete your meal with</h3>
+                            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 text-primary">✣</span>
+                            <h3 className="font-semibold text-foreground">Complete your meal with</h3>
                         </div>
                         <div className="flex gap-3 overflow-x-auto pb-1">
                             {availableSuggestions.map((item) => (
@@ -511,7 +511,7 @@ export function CheckoutForm({ restaurant, userId, savedAddresses, suggestedItem
                                         ) : null}
                                         <button
                                             type="button"
-                                            className="absolute bottom-1 right-1 inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-800 shadow-sm"
+                                            className="absolute bottom-1 right-1 inline-flex h-7 w-7 items-center justify-center rounded-full border border-border bg-card text-foreground shadow-sm hover:bg-primary hover:text-primary-foreground"
                                             onClick={() =>
                                                 addItem({
                                                     id: item.id,
@@ -526,7 +526,7 @@ export function CheckoutForm({ restaurant, userId, savedAddresses, suggestedItem
                                             <Plus className="h-3.5 w-3.5" />
                                         </button>
                                     </div>
-                                    <p className="line-clamp-2 text-sm font-medium">{item.name}</p>
+                                    <p className="line-clamp-2 text-sm font-medium text-foreground">{item.name}</p>
                                     <div className="mt-1 flex items-center gap-1.5">
                                         <p className="text-sm font-semibold text-primary">₹{item.price}</p>
                                         {item.compare_at_price && item.compare_at_price > item.price ? (
@@ -539,9 +539,9 @@ export function CheckoutForm({ restaurant, userId, savedAddresses, suggestedItem
                     </div>
                 )}
 
-                <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
-                    <div className="flex items-center justify-between bg-[#dcebff] px-4 py-3">
-                        <p className="font-semibold text-[#1e5fbf]">
+                <div className="overflow-hidden rounded-xl border border-border/70 bg-card/70 shadow-sm">
+                    <div className="flex items-center justify-between bg-primary/15 px-4 py-3">
+                        <p className="font-semibold text-primary">
                             {freeDeliveryThreshold > 0
                                 ? isFreeDelivery
                                     ? 'Free delivery unlocked'
@@ -559,9 +559,9 @@ export function CheckoutForm({ restaurant, userId, savedAddresses, suggestedItem
                                         : `Current cart: ₹${subtotal.toFixed(0)} / ₹${freeDeliveryThreshold.toFixed(0)} for free delivery.`}
                                 </p>
                                 {!isFreeDelivery ? (
-                                    <div className="h-2 overflow-hidden rounded-full bg-slate-200">
+                                    <div className="h-2 overflow-hidden rounded-full bg-muted">
                                         <div
-                                            className="h-full rounded-full bg-slate-900 transition-all"
+                                            className="h-full rounded-full bg-primary transition-all"
                                             style={{ width: `${Math.min(100, (subtotal / freeDeliveryThreshold) * 100)}%` }}
                                         />
                                     </div>
@@ -569,7 +569,7 @@ export function CheckoutForm({ restaurant, userId, savedAddresses, suggestedItem
                             </>
                         ) : null}
                         {totalSavedOverall > 0 ? (
-                            <p className="text-sm font-medium text-emerald-700">
+                            <p className="text-sm font-medium text-primary">
                                 Total savings so far: ₹{totalSavedOverall.toFixed(0)}
                             </p>
                         ) : (
@@ -579,12 +579,12 @@ export function CheckoutForm({ restaurant, userId, savedAddresses, suggestedItem
                 </div>
 
                 {/* Payment Method */}
-                <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
-                    <h3 className="mb-3 flex items-center gap-2 font-semibold">
+                <div className="rounded-xl border border-border/70 bg-card/70 p-4 shadow-sm">
+                    <h3 className="mb-3 flex items-center gap-2 font-semibold text-foreground">
                         <CreditCard className="h-4 w-4" />
                         Payment Method
                     </h3>
-                    <div className="divide-y rounded-lg bg-muted/15 px-2">
+                    <div className="divide-y divide-border/70 rounded-lg bg-muted/20 px-2">
                         {codEnabled && (
                             <button
                                 type="button"
@@ -594,11 +594,11 @@ export function CheckoutForm({ restaurant, userId, savedAddresses, suggestedItem
                                     : 'text-muted-foreground hover:text-foreground'
                                     }`}
                             >
-                                <span className={`inline-flex h-4 w-4 items-center justify-center rounded-full border-2 ${paymentMethod === 'cod' ? 'border-slate-900' : 'border-muted-foreground/40'}`}>
-                                    {paymentMethod === 'cod' ? <span className="h-2 w-2 rounded-full bg-slate-900" /> : null}
+                                <span className={`inline-flex h-4 w-4 items-center justify-center rounded-full border-2 ${paymentMethod === 'cod' ? 'border-primary' : 'border-muted-foreground/40'}`}>
+                                    {paymentMethod === 'cod' ? <span className="h-2 w-2 rounded-full bg-primary" /> : null}
                                 </span>
-                                <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-                                    <Banknote className="h-5 w-5 text-green-600" />
+                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/15">
+                                    <Banknote className="h-5 w-5 text-primary" />
                                 </div>
                                 <div className="text-left">
                                     <p className="font-medium">Cash</p>
@@ -615,11 +615,11 @@ export function CheckoutForm({ restaurant, userId, savedAddresses, suggestedItem
                                     : 'text-muted-foreground hover:text-foreground'
                                     }`}
                             >
-                                <span className={`inline-flex h-4 w-4 items-center justify-center rounded-full border-2 ${paymentMethod === 'online' ? 'border-slate-900' : 'border-muted-foreground/40'}`}>
-                                    {paymentMethod === 'online' ? <span className="h-2 w-2 rounded-full bg-slate-900" /> : null}
+                                <span className={`inline-flex h-4 w-4 items-center justify-center rounded-full border-2 ${paymentMethod === 'online' ? 'border-primary' : 'border-muted-foreground/40'}`}>
+                                    {paymentMethod === 'online' ? <span className="h-2 w-2 rounded-full bg-primary" /> : null}
                                 </span>
-                                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-                                    <CreditCard className="h-5 w-5 text-blue-600" />
+                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/15">
+                                    <CreditCard className="h-5 w-5 text-primary" />
                                 </div>
                                 <div className="text-left">
                                     <p className="font-medium">Online</p>
@@ -630,52 +630,52 @@ export function CheckoutForm({ restaurant, userId, savedAddresses, suggestedItem
                     </div>
                 </div>
 
-                <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
+                <div className="overflow-hidden rounded-xl border border-border/70 bg-card/70 shadow-sm">
                     {orderType === 'delivery' ? (
                         <>
-                            <div className="flex items-center gap-3 border-b px-4 py-3">
-                                <Clock className="h-5 w-5 text-slate-600" />
-                                <p className="font-medium">Delivery in 30-35 mins</p>
+                            <div className="flex items-center gap-3 border-b border-border/70 px-4 py-3">
+                                <Clock className="h-5 w-5 text-muted-foreground" />
+                                <p className="font-medium text-foreground">Delivery in 30-35 mins</p>
                             </div>
                             <button
                                 type="button"
                                 onClick={() => setShowAddressModal(true)}
-                                className="flex w-full items-start gap-3 border-b px-4 py-3 text-left"
+                                className="flex w-full items-start gap-3 border-b border-border/70 px-4 py-3 text-left hover:bg-muted/40"
                             >
                                 {(() => {
                                     const Icon = getAddressTypeIcon(selectedAddress?.address_type)
-                                    return <Icon className="mt-0.5 h-5 w-5 text-slate-600" />
+                                    return <Icon className="mt-0.5 h-5 w-5 text-muted-foreground" />
                                 })()}
                                 <div className="min-w-0">
-                                    <p className="font-medium">Delivery at {selectedAddress?.address_type || 'saved address'}</p>
+                                    <p className="font-medium text-foreground">Delivery at {selectedAddress?.address_type || 'saved address'}</p>
                                     <p className="line-clamp-2 text-sm text-muted-foreground">
                                         {selectedAddress
                                             ? `${selectedAddress.flat_building}, ${selectedAddress.locality}${selectedAddress.city ? `, ${selectedAddress.city}` : ''}`
                                             : 'Select address'}
                                     </p>
                                 </div>
-                                <ChevronRight className="ml-auto mt-1 h-4 w-4 shrink-0 text-slate-500" />
+                                <ChevronRight className="ml-auto mt-1 h-4 w-4 shrink-0 text-muted-foreground" />
                             </button>
                             <div className="flex items-center gap-3 px-4 py-3">
-                                <Phone className="h-5 w-5 text-slate-600" />
-                                <p className="font-medium">{selectedAddress?.person_name || 'Customer'}{selectedAddress?.mobile ? `, ${selectedAddress.mobile}` : ''}</p>
+                                <Phone className="h-5 w-5 text-muted-foreground" />
+                                <p className="font-medium text-foreground">{selectedAddress?.person_name || 'Customer'}{selectedAddress?.mobile ? `, ${selectedAddress.mobile}` : ''}</p>
                             </div>
                         </>
                     ) : (
                         <>
-                            <div className="flex items-center gap-3 border-b px-4 py-3">
-                                <Store className="h-5 w-5 text-slate-600" />
-                                <p className="font-medium">Pickup from restaurant</p>
+                            <div className="flex items-center gap-3 border-b border-border/70 px-4 py-3">
+                                <Store className="h-5 w-5 text-muted-foreground" />
+                                <p className="font-medium text-foreground">Pickup from restaurant</p>
                             </div>
-                            <div className="border-b px-4 py-3">
-                                <p className="font-medium">{restaurant.name}</p>
+                            <div className="border-b border-border/70 px-4 py-3">
+                                <p className="font-medium text-foreground">{restaurant.name}</p>
                                 <p className="mt-0.5 text-sm text-muted-foreground">{restaurantAddress || 'Address not available'}</p>
                                 {restaurant.latitude && restaurant.longitude ? (
                                     <a
                                         href={`https://www.google.com/maps/dir/?api=1&destination=${restaurant.latitude},${restaurant.longitude}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-slate-800 underline underline-offset-2"
+                                        className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-primary underline underline-offset-2"
                                     >
                                         <Navigation className="h-4 w-4" />
                                         Get directions
@@ -683,44 +683,44 @@ export function CheckoutForm({ restaurant, userId, savedAddresses, suggestedItem
                                 ) : null}
                             </div>
                             <div className="flex items-center gap-3 px-4 py-3">
-                                <Phone className="h-5 w-5 text-slate-600" />
-                                <p className="font-medium">{selectedAddress?.person_name || 'Customer'}{selectedAddress?.mobile ? `, ${selectedAddress.mobile}` : ''}</p>
+                                <Phone className="h-5 w-5 text-muted-foreground" />
+                                <p className="font-medium text-foreground">{selectedAddress?.person_name || 'Customer'}{selectedAddress?.mobile ? `, ${selectedAddress.mobile}` : ''}</p>
                             </div>
                         </>
                     )}
                 </div>
 
                 {/* Bill Summary */}
-                <div className="space-y-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
-                    <h3 className="flex items-center gap-2 border-b pb-3 font-semibold">
+                <div className="space-y-3 rounded-xl border border-border/70 bg-card/70 p-4 shadow-sm">
+                    <h3 className="flex items-center gap-2 border-b border-border/70 pb-3 font-semibold text-foreground">
                         <Tag className="h-4 w-4" />
                         Bill Summary
                     </h3>
-                    <div className="flex justify-between text-sm">
+                    <div className="flex justify-between text-sm text-foreground">
                         <span className="text-muted-foreground">Item Total</span>
                         <span>₹{subtotal.toFixed(0)}</span>
                     </div>
                     {orderType === 'delivery' && (
-                        <div className="flex justify-between text-sm">
+                        <div className="flex justify-between text-sm text-foreground">
                             <span className="text-muted-foreground">Delivery Fee</span>
                             {isFreeDelivery ? (
-                                <span className="text-green-600 font-medium">FREE</span>
+                                <span className="font-medium text-primary">FREE</span>
                             ) : (
                                 <span>₹{deliveryFee.toFixed(0)}</span>
                             )}
                         </div>
                     )}
                     {taxAmount > 0 && (
-                        <div className="flex justify-between text-sm">
+                        <div className="flex justify-between text-sm text-foreground">
                             <span className="text-muted-foreground">GST ({taxRate}%)</span>
                             <span>₹{taxAmount.toFixed(0)}</span>
                         </div>
                     )}
-                    <div className="flex items-center justify-between border-t pt-3">
-                        <div className="flex items-center gap-2 text-lg font-bold">
+                    <div className="flex items-center justify-between border-t border-border/70 pt-3">
+                        <div className="flex items-center gap-2 text-lg font-bold text-foreground">
                             <span>Total Bill</span>
                             {totalSavedOverall > 0 ? (
-                                <span className="rounded-full bg-[#dcebff] px-2 py-0.5 text-xs font-semibold text-[#1e5fbf]">
+                                <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs font-semibold text-primary">
                                     You saved ₹{totalSavedOverall.toFixed(0)}
                                 </span>
                             ) : null}
@@ -733,17 +733,17 @@ export function CheckoutForm({ restaurant, userId, savedAddresses, suggestedItem
                         </div>
                     </div>
                     {settings?.free_delivery_above && !isFreeDelivery && orderType === 'delivery' && (
-                        <p className="text-xs text-center bg-amber-50 text-amber-800 p-2 rounded-lg">
+                        <p className="rounded-lg bg-primary/10 p-2 text-center text-xs text-primary">
                             Add ₹{(settings.free_delivery_above - subtotal).toFixed(0)} more for free delivery
                         </p>
                     )}
                 </div>
 
                 {/* Submit Button - Fixed on mobile */}
-                <div className="fixed bottom-0 left-0 right-0 border-t bg-white p-4 lg:static lg:border-0 lg:bg-transparent lg:p-0">
+                <div className="fixed bottom-0 left-0 right-0 border-t border-border/70 bg-background/95 p-4 backdrop-blur lg:static lg:border-0 lg:bg-transparent lg:p-0">
                     <Button
                         type="submit"
-                        className="h-12 w-full bg-slate-900 text-base font-semibold text-white hover:bg-slate-800"
+                        className="h-12 w-full bg-primary text-base font-semibold text-primary-foreground hover:bg-primary/90"
                         size="lg"
                         disabled={isRestaurantOffline || isLoading || (orderType === 'delivery' && !selectedAddress)}
                     >
@@ -756,7 +756,7 @@ export function CheckoutForm({ restaurant, userId, savedAddresses, suggestedItem
                         }
                     </Button>
                     {isRestaurantOffline && (
-                        <p className="mt-2 text-center text-xs text-amber-700">
+                        <p className="mt-2 text-center text-xs text-amber-200">
                             Orders are temporarily disabled for both COD and online payment.
                         </p>
                     )}
@@ -783,7 +783,7 @@ export function CheckoutForm({ restaurant, userId, savedAddresses, suggestedItem
                         className="resize-none"
                     />
                     <div className="flex justify-end">
-                        <Button type="button" className="bg-slate-900 text-white hover:bg-slate-800" onClick={() => setIsNotesDialogOpen(false)}>
+                        <Button type="button" className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setIsNotesDialogOpen(false)}>
                             Save note
                         </Button>
                     </div>

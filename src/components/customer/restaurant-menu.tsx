@@ -110,19 +110,6 @@ export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItem
     const [compactStickyTabs, setCompactStickyTabs] = useState(false)
     const [activeOrderIndex, setActiveOrderIndex] = useState(0)
     const [liveActiveOrders, setLiveActiveOrders] = useState(activeOrders)
-    const BG_SLOT_MS = 10 * 60 * 1000
-    const topBgOptions = useMemo(
-        () => [
-            'bg-[#0b5d66]',
-            'bg-[#0b4b63]',
-            'bg-[#123d66]',
-            'bg-[#1c3a63]',
-        ],
-        []
-    )
-    const [bgIndex, setBgIndex] = useState(
-        () => Math.floor(Date.now() / BG_SLOT_MS) % topBgOptions.length
-    )
     const { items: cartItems } = useCart()
     const homeRef = useRef<HTMLDivElement | null>(null)
     const menuRef = useRef<HTMLDivElement | null>(null)
@@ -267,13 +254,6 @@ export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItem
     }, [])
 
     useEffect(() => {
-        const id = window.setInterval(() => {
-            setBgIndex(Math.floor(Date.now() / BG_SLOT_MS) % topBgOptions.length)
-        }, 60 * 1000)
-        return () => window.clearInterval(id)
-    }, [topBgOptions.length])
-
-    useEffect(() => {
         if (featuredItems.length <= 1) return
         const timer = window.setInterval(() => {
             setFeaturedIndex((prev) => (prev + 1) % featuredItems.length)
@@ -398,8 +378,8 @@ export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItem
             {mode === 'home' ? <CustomerHeader restaurant={restaurant} user={user} /> : null}
 
             {restaurant.is_online === false && (
-                <div className="bg-amber-50 border-b border-amber-200">
-                    <div className="mx-auto w-full px-4 py-2 text-sm text-amber-800">
+                <div className="border-b border-amber-500/30 bg-amber-500/10">
+                    <div className="mx-auto w-full px-4 py-2 text-sm text-amber-200">
                         This restaurant is currently offline. You can browse the menu, but orders are temporarily disabled.
                     </div>
                 </div>
@@ -439,11 +419,11 @@ export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItem
                     {mode === 'home' && showAppliedFilterChips && (
                         <div className="mt-3 flex flex-wrap gap-2.5">
                             {filterType !== 'all' && (
-                                <Badge variant="outline" className="rounded-md border-white/30 bg-white/10 px-2.5 py-1 text-white pr-1">
+                                <Badge variant="outline" className="rounded-md border-primary/30 bg-primary/15 px-2.5 py-1 pr-1 text-primary">
                                     Filter: {filterType}
                                     <button
                                         onClick={() => setFilterType('all')}
-                                        className="ml-1 inline-flex rounded-sm p-0.5 hover:bg-white/10"
+                                        className="ml-1 inline-flex rounded-sm p-0.5 hover:bg-primary/20"
                                         aria-label="Remove food type filter"
                                     >
                                         <X className="h-3 w-3" />
@@ -451,7 +431,7 @@ export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItem
                                 </Badge>
                             )}
                             {sortType !== 'popular' && (
-                                <Badge variant="outline" className="rounded-md border-white/30 bg-white/10 px-2.5 py-1 text-white pr-1">
+                                <Badge variant="outline" className="rounded-md border-primary/30 bg-primary/15 px-2.5 py-1 pr-1 text-primary">
                                     {sortType === 'price_asc'
                                         ? 'Price Low to High'
                                         : sortType === 'price_desc'
@@ -459,7 +439,7 @@ export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItem
                                             : 'Quick Prep'}
                                     <button
                                         onClick={() => setSortType('popular')}
-                                        className="ml-1 inline-flex rounded-sm p-0.5 hover:bg-white/10"
+                                        className="ml-1 inline-flex rounded-sm p-0.5 hover:bg-primary/20"
                                         aria-label="Remove sorting"
                                     >
                                         <X className="h-3 w-3" />
@@ -484,12 +464,12 @@ export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItem
                                         <img src={restaurant.logo_url} alt="All categories" className="h-full w-full object-cover" />
                                     ) : (
                                         <span className="flex h-full w-full items-center justify-center">
-                                            <UtensilsCrossed className="h-5 w-5 text-white" />
+                                            <UtensilsCrossed className="h-5 w-5 text-primary" />
                                         </span>
                                     )}
                             </span>
-                            <span className={`mt-1 text-xs font-semibold ${selectedCategory === null ? 'text-white' : 'text-white/75'}`}>All</span>
-                            <span className={`mt-2 h-1 w-8 rounded-full ${selectedCategory === null ? 'bg-white' : 'bg-transparent'}`} />
+                            <span className={`mt-1 text-xs font-semibold ${selectedCategory === null ? 'text-primary' : 'text-muted-foreground'}`}>All</span>
+                            <span className={`mt-2 h-1 w-8 rounded-full ${selectedCategory === null ? 'bg-primary' : 'bg-transparent'}`} />
                         </button>
                         {categories.map((category) => (
                             <button
@@ -506,14 +486,14 @@ export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItem
                                             <img src={categoryTabImageMap.get(category.id)!} alt={category.name} className="h-full w-full object-cover" />
                                         ) : (
                                             <span className="flex h-full w-full items-center justify-center">
-                                                <UtensilsCrossed className="h-5 w-5 text-white" />
+                                                <UtensilsCrossed className="h-5 w-5 text-primary" />
                                             </span>
                                         )}
                                 </span>
-                                <span className={`mt-1 whitespace-nowrap text-xs font-semibold ${selectedCategory === category.id ? 'text-white' : 'text-white/75'}`}>
+                                <span className={`mt-1 whitespace-nowrap text-xs font-semibold ${selectedCategory === category.id ? 'text-primary' : 'text-muted-foreground'}`}>
                                     {category.name}
                                 </span>
-                                <span className={`mt-2 h-1 w-8 rounded-full ${selectedCategory === category.id ? 'bg-white' : 'bg-transparent'}`} />
+                                <span className={`mt-2 h-1 w-8 rounded-full ${selectedCategory === category.id ? 'bg-primary' : 'bg-transparent'}`} />
                             </button>
                         ))}
                     </div>
@@ -750,11 +730,11 @@ export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItem
                 <div className={`fixed left-1/2 z-40 w-full max-w-lg -translate-x-1/2 px-4 ${cartItemCount > 0 ? 'bottom-36' : 'bottom-20'}`}>
                     <Link
                         href={`/orders/${currentActiveOrder.id}`}
-                        className="mx-auto flex h-14 w-full items-center justify-between rounded-2xl bg-slate-800/95 px-4 text-white shadow-lg backdrop-blur"
+                        className="mx-auto flex h-14 w-full items-center justify-between rounded-2xl bg-primary px-4 text-primary-foreground shadow-lg"
                     >
                         <div className="min-w-0">
                             <p className="truncate text-sm font-medium">{activeOrderStatusLabel}</p>
-                            <p className="truncate text-[11px] text-white/70">
+                            <p className="truncate text-[11px] text-primary-foreground/70">
                                 Order #{currentActiveOrder.order_number || currentActiveOrder.id.slice(0, 8)}
                             </p>
                             {liveActiveOrders.length > 1 ? (
@@ -762,7 +742,7 @@ export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItem
                                     {liveActiveOrders.map((order, idx) => (
                                         <span
                                             key={order.id}
-                                            className={`h-1.5 rounded-full ${idx === activeOrderIndex ? 'w-4 bg-white' : 'w-1.5 bg-white/40'}`}
+                                            className={`h-1.5 rounded-full ${idx === activeOrderIndex ? 'w-4 bg-primary-foreground' : 'w-1.5 bg-primary-foreground/40'}`}
                                         />
                                     ))}
                                 </div>
@@ -781,18 +761,18 @@ export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItem
                     <button
                         type="button"
                         onClick={() => setIsCartOpen(true)}
-                        className="mx-auto flex h-14 w-full items-center justify-between rounded-2xl bg-slate-900/95 px-3.5 text-white shadow-lg backdrop-blur"
+                        className="mx-auto flex h-14 w-full items-center justify-between rounded-2xl bg-primary px-3.5 text-primary-foreground shadow-lg"
                     >
                         <div className="flex min-w-0 items-center gap-3">
                             <div className="flex -space-x-2">
                                 {cartPreviewItems.map((item) => (
-                                    <div key={item.id} className="h-8 w-8 overflow-hidden rounded-full border border-white/35 bg-slate-700">
+                                    <div key={item.id} className="h-8 w-8 overflow-hidden rounded-full border border-primary-foreground/35 bg-primary-foreground/15">
                                         {item.image_url ? (
                                             // eslint-disable-next-line @next/next/no-img-element
                                             <img src={item.image_url} alt={item.name} className="h-full w-full object-cover" />
                                         ) : (
                                             <div className="flex h-full w-full items-center justify-center">
-                                                <ShoppingCart className="h-3.5 w-3.5 text-white/80" />
+                                                <ShoppingCart className="h-3.5 w-3.5 text-primary-foreground/80" />
                                             </div>
                                         )}
                                     </div>

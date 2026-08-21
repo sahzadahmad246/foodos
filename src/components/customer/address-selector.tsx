@@ -119,24 +119,24 @@ export function AddressSelector({ open, onClose, userId, onAddressSelected, embe
 
     const content = (
         <div className="space-y-5">
-            <div className="overflow-hidden rounded-2xl border bg-white">
+            <div className="overflow-hidden rounded-xl border border-border/70 bg-card/70">
                 <button
                     type="button"
-                    className="flex w-full items-center gap-3 px-4 py-4 text-left"
+                    className="flex w-full items-center gap-3 px-4 py-4 text-left hover:bg-muted/40"
                     onClick={() => {
                         setEditAddress(null)
                         setShowAddAddress(true)
                     }}
                 >
-                    <Plus className="h-5 w-5 text-rose-500" />
-                    <span className="font-medium text-rose-500">Add Address</span>
-                    <ChevronRight className="ml-auto h-4 w-4 text-slate-500" />
+                    <Plus className="h-5 w-5 text-primary" />
+                    <span className="font-medium text-primary">Add Address</span>
+                    <ChevronRight className="ml-auto h-4 w-4 text-muted-foreground" />
                 </button>
             </div>
 
             {addresses.length > 0 && (
                 <div className="space-y-2">
-                    <p className="px-1 text-xs font-semibold tracking-[0.22em] text-slate-500">
+                    <p className="px-1 text-xs font-semibold tracking-[0.22em] text-muted-foreground">
                         Saved Addresses
                     </p>
                     {addresses.map((address) => {
@@ -144,12 +144,12 @@ export function AddressSelector({ open, onClose, userId, onAddressSelected, embe
                         return (
                             <div
                                 key={address.id}
-                                className="relative rounded-2xl border bg-white p-4 transition-colors hover:bg-accent"
+                                className="relative rounded-xl border border-border/70 bg-card/70 p-4 transition-colors hover:bg-muted/50"
                                 onClick={() => handleSelectAddress(address)}
                             >
-                                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-sky-700">Delivers To</p>
+                                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-primary">Delivers To</p>
                                 <div className="flex items-start gap-3">
-                                    <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-slate-100">
+                                    <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-muted text-foreground">
                                         <Icon className="h-5 w-5" />
                                     </div>
                                     <div className="min-w-0 flex-1">
@@ -225,10 +225,10 @@ export function AddressSelector({ open, onClose, userId, onAddressSelected, embe
     return (
         <>
             {embedded ? (
-                <div className="bg-[#ececf3] px-4 pb-6 pt-4">{content}</div>
+                <div className="bg-background px-4 pb-6 pt-4">{content}</div>
             ) : (
                 <Dialog open={open} onOpenChange={handleClose}>
-                    <DialogContent className="z-[80] top-auto bottom-0 left-0 right-0 translate-x-0 translate-y-0 max-w-none gap-0 overflow-hidden rounded-b-none rounded-t-3xl border-0 bg-[#ececf3] p-0 sm:left-1/2 sm:right-auto sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:translate-y-0">
+                    <DialogContent className="z-[80] top-auto bottom-0 left-0 right-0 translate-x-0 translate-y-0 max-w-none gap-0 overflow-hidden rounded-b-none rounded-t-3xl border border-border/70 bg-background p-0 text-foreground sm:left-1/2 sm:right-auto sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:translate-y-0">
                         <DialogHeader className="px-5 pb-3 pt-5">
                             <DialogTitle className="text-3xl font-semibold tracking-tight">Select an address</DialogTitle>
                         </DialogHeader>

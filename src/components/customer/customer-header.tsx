@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { MapPin, ChevronDown, User, LogIn } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -21,19 +21,6 @@ export function CustomerHeader({ restaurant, user }: CustomerHeaderProps) {
     const [showAddressSelector, setShowAddressSelector] = useState(false)
     const [showProfileSidebar, setShowProfileSidebar] = useState(false)
     const { currentLocation, selectedAddress, isDetecting } = useLocation()
-    const BG_SLOT_MS = 10 * 60 * 1000
-    const headerBgOptions = useMemo(
-        () => [
-            'bg-[#0b5d66]',
-            'bg-[#0b4b63]',
-            'bg-[#123d66]',
-            'bg-[#1c3a63]',
-        ],
-        []
-    )
-    const [bgIndex, setBgIndex] = useState(
-        () => Math.floor(Date.now() / BG_SLOT_MS) % headerBgOptions.length
-    )
 
     // Build location display text
     let locationDisplay = 'Select location'
@@ -49,29 +36,22 @@ export function CustomerHeader({ restaurant, user }: CustomerHeaderProps) {
         locationDisplay = currentLocation.locality
     }
 
-    useEffect(() => {
-        const id = window.setInterval(() => {
-            setBgIndex(Math.floor(Date.now() / BG_SLOT_MS) % headerBgOptions.length)
-        }, 60 * 1000)
-        return () => window.clearInterval(id)
-    }, [headerBgOptions.length])
-
     return (
         <>
             <header className="relative z-30 overflow-hidden border-b border-border/70 bg-background text-foreground">
                 <div className="relative mx-auto flex min-h-[82px] w-full items-center justify-between gap-3 px-4 py-5 sm:px-5">
                     <div className="flex flex-1 min-w-0 items-start gap-2">
-                        <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0 text-white/80" />
+                        <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
                         <div className="min-w-0">
-                            <p className="text-[10px] uppercase tracking-[0.12em] text-white/70">Deliver to</p>
+                            <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Deliver to</p>
                             <button
                                 onClick={() => setShowAddressSelector(true)}
                                 className="mt-0.5 inline-flex items-center gap-1 text-left"
                             >
-                                <span className="text-[15px] leading-tight text-white line-clamp-1 break-words font-medium">
+                                <span className="line-clamp-1 break-words text-[15px] font-medium leading-tight text-foreground">
                                     {isDetecting ? 'Detecting location...' : locationDisplay}
                                 </span>
-                                <ChevronDown className="h-4 w-4 flex-shrink-0 text-white/80" />
+                                <ChevronDown className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
                             </button>
                         </div>
                     </div>
@@ -82,7 +62,7 @@ export function CustomerHeader({ restaurant, user }: CustomerHeaderProps) {
                             variant="secondary"
                             size="icon"
                             onClick={() => setShowProfileSidebar(true)}
-                            className="flex-shrink-0 h-10 w-10 rounded-full bg-white/15 text-white hover:bg-white/25"
+                            className="h-10 w-10 flex-shrink-0 rounded-full bg-muted text-foreground hover:bg-muted/80"
                         >
                             {user.user_metadata?.avatar_url ? (
                                 <img
@@ -99,7 +79,7 @@ export function CustomerHeader({ restaurant, user }: CustomerHeaderProps) {
                             asChild
                             variant="secondary"
                             size="sm"
-                            className="flex-shrink-0 h-10 px-3 bg-white/15 text-white hover:bg-white/25"
+                            className="h-10 flex-shrink-0 bg-muted px-3 text-foreground hover:bg-muted/80"
                         >
                             <Link href="/login">
                                 <LogIn className="h-3.5 w-3.5 sm:mr-2" />

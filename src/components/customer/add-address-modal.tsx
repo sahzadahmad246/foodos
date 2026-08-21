@@ -144,8 +144,8 @@ export function AddAddressModal({ open, onClose, onAddressAdded, userId, editAdd
     return (
         <>
             <Dialog open={open} onOpenChange={onClose}>
-                <DialogContent className="z-[80] h-[100dvh] w-screen max-w-none overflow-x-hidden overflow-y-auto rounded-none border-0 bg-[#f4f5f7] p-0">
-                    <DialogHeader className="sticky top-0 z-10 border-b bg-white px-4 py-3">
+                <DialogContent className="z-[80] h-[100dvh] w-screen max-w-none overflow-x-hidden overflow-y-auto rounded-none border-0 bg-background p-0 text-foreground">
+                    <DialogHeader className="sticky top-0 z-10 border-b border-border/70 bg-background px-4 py-3">
                         <div className="flex items-center gap-2">
                             <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={onClose}>
                                 <ArrowLeft className="h-4 w-4" />
@@ -171,16 +171,16 @@ export function AddAddressModal({ open, onClose, onAddressAdded, userId, editAdd
 
                         <div className="space-y-4 px-4">
                             <div>
-                                <p className="mb-2 text-sm font-medium text-slate-600">Delivery details</p>
-                                <div className="rounded-2xl border bg-white p-3">
+                                <p className="mb-2 text-sm font-medium text-muted-foreground">Delivery details</p>
+                                <div className="rounded-xl border border-border/70 bg-card/70 p-3">
                                     <div className="flex items-start gap-3">
-                                        <MapPin className="mt-1 h-5 w-5 text-rose-500" />
+                                        <MapPin className="mt-1 h-5 w-5 text-primary" />
                                         <div className="min-w-0">
-                                            <p className="text-sm font-medium text-slate-900">
+                                            <p className="text-sm font-medium text-foreground">
                                                 {formData.locality || 'Tap on map to select location'}
                                             </p>
                                             {formData.city ? (
-                                                <p className="mt-0.5 text-xs text-slate-500">
+                                                <p className="mt-0.5 text-xs text-muted-foreground">
                                                     {formData.city}, {formData.state} {formData.pincode}
                                                 </p>
                                             ) : null}
@@ -190,37 +190,37 @@ export function AddAddressModal({ open, onClose, onAddressAdded, userId, editAdd
                             </div>
 
                             <div>
-                                <Label htmlFor="flat" className="mb-2 block text-sm text-slate-600">Address details*</Label>
+                                <Label htmlFor="flat" className="mb-2 block text-sm text-muted-foreground">Address details*</Label>
                                 <Input
                                     id="flat"
                                     value={formData.flat_building}
                                     onChange={(e) => setFormData(prev => ({ ...prev, flat_building: e.target.value }))}
                                     placeholder="E.g. Floor, Flat no., Tower"
-                                    className="h-14 rounded-2xl border-slate-300 bg-white"
+                                    className="h-14 rounded-xl border-border bg-card text-foreground"
                                     required
                                 />
                             </div>
 
                             <div>
-                                <Label htmlFor="landmark" className="mb-2 block text-sm text-slate-600">Landmark (optional)</Label>
+                                <Label htmlFor="landmark" className="mb-2 block text-sm text-muted-foreground">Landmark (optional)</Label>
                                 <Input
                                     id="landmark"
                                     value={formData.landmark || ''}
                                     onChange={(e) => setFormData(prev => ({ ...prev, landmark: e.target.value }))}
                                     placeholder="Nearby landmark"
-                                    className="h-12 rounded-2xl border-slate-300 bg-white"
+                                    className="h-12 rounded-xl border-border bg-card text-foreground"
                                 />
                             </div>
 
                             <div>
-                                <p className="mb-2 text-sm font-medium text-slate-600">Receiver details for this address</p>
+                                <p className="mb-2 text-sm font-medium text-muted-foreground">Receiver details for this address</p>
                                 <div className="grid grid-cols-1 gap-2">
                                     <Input
                                         id="person_name"
                                         value={formData.person_name}
                                         onChange={(e) => setFormData(prev => ({ ...prev, person_name: e.target.value }))}
                                         placeholder="Person name"
-                                        className="h-12 rounded-2xl border-slate-300 bg-white"
+                                        className="h-12 rounded-xl border-border bg-card text-foreground"
                                         required
                                     />
                                     <Input
@@ -230,14 +230,14 @@ export function AddAddressModal({ open, onClose, onAddressAdded, userId, editAdd
                                         onChange={(e) => setFormData(prev => ({ ...prev, mobile: e.target.value }))}
                                         placeholder="Mobile number"
                                         maxLength={10}
-                                        className="h-12 rounded-2xl border-slate-300 bg-white"
+                                        className="h-12 rounded-xl border-border bg-card text-foreground"
                                         required
                                     />
                                 </div>
                             </div>
 
                             <div>
-                                <p className="mb-2 text-sm font-medium text-slate-600">Save address as</p>
+                                <p className="mb-2 text-sm font-medium text-muted-foreground">Save address as</p>
                                 <div className="flex flex-wrap gap-2">
                                     {[
                                         { value: 'home', label: 'Home', icon: Home },
@@ -250,8 +250,8 @@ export function AddAddressModal({ open, onClose, onAddressAdded, userId, editAdd
                                             onClick={() => setFormData(prev => ({ ...prev, address_type: type.value }))}
                                             className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm ${
                                                 formData.address_type === type.value
-                                                    ? 'border-slate-900 bg-slate-900 text-white'
-                                                    : 'border-slate-300 bg-white text-slate-700'
+                                                    ? 'border-primary bg-primary text-primary-foreground'
+                                                    : 'border-border bg-card text-foreground/80 hover:bg-muted'
                                             }`}
                                         >
                                             <type.icon className="h-4 w-4" />
@@ -262,11 +262,11 @@ export function AddAddressModal({ open, onClose, onAddressAdded, userId, editAdd
                             </div>
                         </div>
 
-                        <div className="mt-2 border-t bg-white p-4">
+                        <div className="mt-2 border-t border-border/70 bg-background p-4">
                             <Button
                                 type="submit"
                                 disabled={isSaving || !isFormValid}
-                                className="h-12 w-full rounded-xl bg-slate-900 text-white hover:bg-slate-800"
+                                className="h-12 w-full rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
                             >
                                 {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 {editAddress ? 'Update address' : 'Save address'}

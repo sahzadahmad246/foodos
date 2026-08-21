@@ -166,7 +166,7 @@ export function LocationMapModal({ open, onClose, initialLocation, onLocationSel
     )
 
     if (embedded) {
-        return <div className="overflow-hidden bg-white">{content}</div>
+        return <div className="overflow-hidden bg-background">{content}</div>
     }
 
     return (

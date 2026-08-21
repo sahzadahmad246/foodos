@@ -80,13 +80,13 @@ export function CartDrawer({ open, onClose, restaurant }: CartDrawerProps) {
                 {items.length === 0 ? (
                     <div className="flex flex-1 flex-col items-center justify-center px-6 py-12 text-center">
                         <div className="mb-4 rounded-2xl bg-card p-4">
-                            <ShoppingBag className="mx-auto h-12 w-12 text-slate-400" />
+                            <ShoppingBag className="mx-auto h-12 w-12 text-muted-foreground" />
                         </div>
                         <h3 className="mb-2 text-lg font-bold text-foreground">Your cart is empty</h3>
                         <p className="mb-6 max-w-xs text-sm text-muted-foreground">
                             Start adding items from the menu to place your order
                         </p>
-                        <Button onClick={onClose} className="h-10 rounded-xl bg-emerald-600 px-6 text-white hover:bg-emerald-700">
+                        <Button onClick={onClose} className="h-10 rounded-xl bg-primary px-6 text-primary-foreground hover:bg-primary/90">
                             Browse Menu
                         </Button>
                     </div>
@@ -160,7 +160,7 @@ export function CartDrawer({ open, onClose, restaurant }: CartDrawerProps) {
                                     <div className="flex items-center gap-2 text-base font-bold text-foreground">
                                         <span>Total Bill</span>
                                         {savedAmount > 0 ? (
-                                            <span className="rounded-full bg-[#dcebff] px-2 py-0.5 text-xs font-semibold text-[#1e5fbf]">
+                                            <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs font-semibold text-primary">
                                                 You saved ₹{savedAmount.toFixed(0)}
                                             </span>
                                         ) : null}
@@ -175,7 +175,7 @@ export function CartDrawer({ open, onClose, restaurant }: CartDrawerProps) {
                             </div>
 
                             {restaurant.is_online === false && (
-                                <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-xs font-medium text-amber-800">
+                                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs font-medium text-amber-200">
                                     ⚠️ Restaurant is not accepting orders currently
                                 </div>
                             )}

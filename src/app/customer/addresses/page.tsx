@@ -15,8 +15,8 @@ export default async function CustomerAddressesPage() {
     }
 
     return (
-        <div className="mx-auto min-h-screen w-full max-w-lg bg-[#ececf3] md:shadow-[0_0_0_1px_hsl(var(--border)),0_18px_45px_-20px_rgba(0,0,0,0.45)]">
-            <header className="sticky top-0 z-20 border-b bg-white/95 backdrop-blur">
+        <div className="mx-auto min-h-screen w-full max-w-lg bg-background text-foreground md:shadow-[0_0_0_1px_hsl(var(--border)),0_18px_45px_-20px_rgba(0,0,0,0.45)]">
+            <header className="sticky top-0 z-20 border-b border-border/70 bg-background/95 backdrop-blur">
                 <div className="flex items-center gap-3 px-4 py-3">
                     <Link
                         href="/"
