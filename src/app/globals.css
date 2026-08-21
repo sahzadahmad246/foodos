@@ -5,6 +5,16 @@
 :root { --radius: .25rem; --background: oklch(.12 .012 160); --foreground: oklch(.94 .014 92); --card: oklch(.155 .014 160); --card-foreground: oklch(.94 .014 92); --popover: oklch(.18 .016 160); --popover-foreground: oklch(.94 .014 92); --primary: oklch(.79 .19 129); --primary-foreground: oklch(.16 .025 140); --secondary: oklch(.2 .018 160); --secondary-foreground: oklch(.9 .012 92); --muted: oklch(.2 .018 160); --muted-foreground: oklch(.64 .025 155); --accent: oklch(.82 .12 82); --accent-foreground: oklch(.2 .04 75); --destructive: oklch(.65 .2 25); --border: oklch(1 0 0 / 13%); --input: oklch(1 0 0 / 15%); --ring: oklch(.79 .19 129); }
 .dark { --background: oklch(.12 .012 160); --foreground: oklch(.94 .014 92); --card: oklch(.155 .014 160); --card-foreground: oklch(.94 .014 92); --popover: oklch(.18 .016 160); --popover-foreground: oklch(.94 .014 92); --primary: oklch(.79 .19 129); --primary-foreground: oklch(.16 .025 140); --secondary: oklch(.2 .018 160); --secondary-foreground: oklch(.9 .012 92); --muted: oklch(.2 .018 160); --muted-foreground: oklch(.64 .025 155); --accent: oklch(.82 .12 82); --accent-foreground: oklch(.2 .04 75); --destructive: oklch(.65 .2 25); --border: oklch(1 0 0 / 13%); --input: oklch(1 0 0 / 15%); --ring: oklch(.79 .19 129); }
 @layer base { * { @apply border-border outline-ring/50; } html { @apply bg-background; } body { @apply bg-background text-foreground; } }
+@utility scrollbar-hide {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+  &::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    background: transparent !important;
+  }
+}
 .landing-grid { background-image: linear-gradient(to right, color-mix(in oklab, var(--border) 45%, transparent) 1px, transparent 1px), linear-gradient(to bottom, color-mix(in oklab, var(--border) 45%, transparent) 1px, transparent 1px); background-size: 64px 64px; mask-image: linear-gradient(to bottom, black 0%, transparent 72%); }
 .landing-hero::after { content: ''; position: absolute; right: -12rem; top: 10rem; width: 32rem; height: 32rem; pointer-events: none; border: 1px solid color-mix(in oklab, var(--primary) 15%, transparent); border-radius: 999px; opacity: .45; }
 .landing-kicker { display: inline-flex; align-items: center; gap: .6rem; font-family: var(--font-geist-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .18em; color: var(--primary); }

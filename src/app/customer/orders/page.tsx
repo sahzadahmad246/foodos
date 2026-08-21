@@ -1,9 +1,10 @@
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Box, Clock, ChevronRight, Store, MapPin } from "lucide-react"
+import { Box, Clock, ChevronRight, Store, MapPin } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { BackButton } from "@/components/customer/back-button"
 
 export const dynamic = "force-dynamic"
 
@@ -48,11 +49,7 @@ export default async function CustomerOrdersPage() {
         <div className="min-h-screen bg-muted/40 pb-20">
             <div className="bg-background border-b sticky top-0 z-10">
                 <div className="container max-w-lg mx-auto px-4 py-4 flex items-center gap-4">
-                    <Link href="/">
-                        <Button variant="ghost" size="icon">
-                            <ArrowLeft className="h-5 w-5" />
-                        </Button>
-                    </Link>
+                    <BackButton />
                     <h1 className="font-semibold text-lg">My Orders</h1>
                 </div>
             </div>

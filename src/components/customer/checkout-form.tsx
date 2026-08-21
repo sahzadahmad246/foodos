@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { useCart } from '@/hooks/use-cart'
 import { createOrder } from '@/app/r/[slug]/actions'
 import { AddressSelector, Address } from './address-selector'
+import { BackButton } from './back-button'
 import { toast } from 'sonner'
 import {
     Loader2, MapPin, User, Phone, ChevronRight, CreditCard, Banknote,
@@ -18,6 +19,7 @@ import { useLocation } from '@/hooks/use-location'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { HCarousel } from './h-carousel'
 
 declare global {
     interface Window {
@@ -354,11 +356,7 @@ export function CheckoutForm({ restaurant, userId, savedAddresses, suggestedItem
             {/* Header */}
             <div className="sticky top-0 z-20 -mx-4 mb-3 border-b border-border/70 bg-background/95 px-4 backdrop-blur">
                 <div className="flex items-center gap-3 py-4">
-                    <Link href={`/r/${restaurant.slug}`}>
-                        <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0 rounded-full text-foreground hover:bg-muted">
-                            <ArrowLeft className="h-5 w-5" />
-                        </Button>
-                    </Link>
+                    <BackButton fallbackHref={`/r/${restaurant.slug}`} className="h-9 w-9" />
                     <div className="min-w-0 flex items-center gap-3">
                         {restaurant.logo_url && (
                             <Image
@@ -502,7 +500,7 @@ export function CheckoutForm({ restaurant, userId, savedAddresses, suggestedItem
                             <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 text-primary">✣</span>
                             <h3 className="font-semibold text-foreground">Complete your meal with</h3>
                         </div>
-                        <div className="flex gap-3 overflow-x-auto pb-1">
+                        <HCarousel>
                             {availableSuggestions.map((item) => (
                                 <div key={item.id} className="w-36 shrink-0">
                                     <div className="relative mb-2 h-24 w-full overflow-hidden rounded-lg bg-muted">
@@ -535,7 +533,7 @@ export function CheckoutForm({ restaurant, userId, savedAddresses, suggestedItem
                                     </div>
                                 </div>
                             ))}
-                        </div>
+                        </HCarousel>
                     </div>
                 )}
 

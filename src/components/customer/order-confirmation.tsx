@@ -3,11 +3,12 @@
 import { useEffect, useState } from 'react'
 import {
     CheckCircle2, MapPin, Phone, Package,
-    ChefHat, Truck, PartyPopper, Store, XCircle, ArrowLeft,
+    ChefHat, Truck, PartyPopper, Store, XCircle,
     Banknote, CreditCard, Bike, User, Clock, Loader2, Check, X
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
+import { BackButton } from './back-button'
 import { createClient } from '@/lib/supabase/client'
 
 interface OrderItem {
@@ -229,22 +230,18 @@ export default function OrderConfirmation({ order: initialOrder }: OrderConfirma
     const CurrentIcon = currentStepIndex >= 0 ? STATUS_STEPS[currentStepIndex]?.icon : Package
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+        <div className="mx-auto min-h-screen w-full max-w-lg border-x border-border/60 bg-background text-foreground">
             {/* Header */}
-            <header className="sticky top-0 z-50 border-b bg-white dark:bg-gray-900">
-                <div className="max-w-lg mx-auto px-4 py-4">
+            <header className="sticky top-0 z-50 border-b border-border/70 bg-background/95 backdrop-blur">
+                <div className="px-4 py-4">
                     <div className="flex items-center gap-4">
-                        <Link href="/">
-                            <button className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-                                <ArrowLeft className="h-5 w-5 text-gray-700 dark:text-gray-300" />
-                            </button>
-                        </Link>
-                        <div className="flex-1 min-w-0">
-                            <h1 className="font-bold text-lg text-gray-900 dark:text-white">
+                        <BackButton fallbackHref="/customer/orders" />
+                        <div className="min-w-0 flex-1">
+                            <h1 className="truncate text-lg font-bold text-foreground">
                                 Order #{order.order_number}
                             </h1>
                             {restaurant && (
-                                <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                                <p className="truncate text-sm text-muted-foreground">
                                     {restaurant.name}
                                 </p>
                             )}
@@ -253,40 +250,40 @@ export default function OrderConfirmation({ order: initialOrder }: OrderConfirma
                 </div>
             </header>
 
-            <div className="max-w-lg mx-auto px-4 py-5 space-y-4">
+            <div className="space-y-4 px-4 py-5">
                 {/* Status Card */}
                 <div className={`
-                    bg-white dark:bg-gray-900 rounded-2xl p-6 border text-center
+                    bg-card/70 rounded-2xl p-6 border text-center
                     ${isCancelled
                         ? 'border-red-200 dark:border-red-800'
                         : isComplete
-                            ? 'border-green-200 dark:border-green-800'
-                            : 'border-gray-200 dark:border-gray-800'
+                            ? 'border-primary/40'
+                            : 'border-border/70'
                     }
                 `}>
                     <div className="mb-4">
                         {isCancelled ? (
                             <XCircle className="h-12 w-12 mx-auto text-red-500" />
                         ) : isComplete ? (
-                            <CheckCircle2 className="h-12 w-12 mx-auto text-green-500" />
+                            <CheckCircle2 className="h-12 w-12 mx-auto text-primary" />
                         ) : (
                             <div className="relative inline-flex">
-                                <div className="w-12 h-12 rounded-full border-2 border-gray-900 dark:border-white flex items-center justify-center">
-                                    <CurrentIcon className="h-6 w-6 text-gray-900 dark:text-white" />
+                                <div className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-primary text-primary">
+                                    <CurrentIcon className="h-6 w-6 text-foreground" />
                                 </div>
                             </div>
                         )}
                     </div>
 
                     <h2 className={`text-xl font-bold mb-1 ${isCancelled ? 'text-red-600 dark:text-red-400'
-                        : isComplete ? 'text-green-600 dark:text-green-400'
-                            : 'text-gray-900 dark:text-white'
+                        : isComplete ? 'text-primary'
+                            : 'text-foreground'
                         }`}>
                         {getStatusMessage()}
                     </h2>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{getStatusDescription()}</p>
+                    <p className="text-sm text-muted-foreground">{getStatusDescription()}</p>
 
-                    <div className="flex items-center justify-center gap-2 mt-3 text-xs text-gray-400">
+                    <div className="flex items-center justify-center gap-2 mt-3 text-xs text-muted-foreground">
                         <Clock className="h-3.5 w-3.5" />
                         {new Date(order.created_at).toLocaleString('en-IN', {
                             dateStyle: 'medium',
@@ -297,22 +294,22 @@ export default function OrderConfirmation({ order: initialOrder }: OrderConfirma
 
                 {/* Rider Info Card */}
                 {!isPickup && !isCancelled && !isComplete && (
-                    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-                        <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2">
-                            <Bike className="h-4 w-4 text-gray-500" />
-                            <span className="font-medium text-sm text-gray-900 dark:text-white">Delivery Partner</span>
+                    <div className="bg-card/70 rounded-2xl border border-border/70 overflow-hidden">
+                        <div className="px-4 py-3 border-b border-border/70 flex items-center gap-2">
+                            <Bike className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-medium text-sm text-foreground">Delivery Partner</span>
                         </div>
                         <div className="p-4">
                             {isLoadingRider ? (
                                 <div className="flex items-center gap-3">
-                                    <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
-                                    <span className="text-sm text-gray-500">Loading...</span>
+                                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                                    <span className="text-sm text-muted-foreground">Loading...</span>
                                 </div>
                             ) : order.rider ? (
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <p className="font-semibold text-gray-900 dark:text-white">{order.rider.name}</p>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400">{getRiderStatusMessage()}</p>
+                                        <p className="font-semibold text-foreground">{order.rider.name}</p>
+                                        <p className="text-sm text-muted-foreground">{getRiderStatusMessage()}</p>
                                     </div>
                                     {order.rider.phone && (
                                         <Button variant="outline" size="sm" asChild className="rounded-xl">
@@ -325,20 +322,20 @@ export default function OrderConfirmation({ order: initialOrder }: OrderConfirma
                                 </div>
                             ) : (
                                 <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                                        <User className="h-4 w-4 text-gray-400" />
+                                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                                        <User className="h-4 w-4 text-muted-foreground" />
                                     </div>
                                     <div>
-                                        <p className="font-medium text-gray-900 dark:text-white">Finding a delivery partner</p>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400">Please wait...</p>
+                                        <p className="font-medium text-foreground">Finding a delivery partner</p>
+                                        <p className="text-sm text-muted-foreground">Please wait...</p>
                                     </div>
                                 </div>
                             )}
                         </div>
                         {/* Animated loading bar when searching */}
                         {!order.rider && !isLoadingRider && (
-                            <div className="h-1 bg-gray-100 dark:bg-gray-800 overflow-hidden">
-                                <div className="h-full w-1/3 bg-gray-900 dark:bg-white animate-[shimmer_1.5s_ease-in-out_infinite]"
+                            <div className="h-1 bg-muted overflow-hidden">
+                                <div className="h-full w-1/3 bg-primary animate-[shimmer_1.5s_ease-in-out_infinite]"
                                     style={{
                                         animation: 'shimmer 1.5s ease-in-out infinite'
                                     }}
@@ -405,8 +402,8 @@ export default function OrderConfirmation({ order: initialOrder }: OrderConfirma
                                                 className={`absolute top-4 right-1/2 h-0.5 w-full ${isCancelledStep
                                                     ? 'bg-red-500'
                                                     : isPast
-                                                        ? 'bg-gray-900 dark:bg-white'
-                                                        : 'bg-gray-200 dark:bg-gray-700'
+                                                        ? 'bg-primary'
+                                                        : 'bg-muted'
                                                     }`}
                                             />
                                         )}
@@ -416,16 +413,16 @@ export default function OrderConfirmation({ order: initialOrder }: OrderConfirma
                                             ${isCancelledStep
                                                 ? 'border-red-500 bg-red-500 dark:bg-red-500'
                                                 : isPast
-                                                    ? 'border-gray-900 bg-white dark:bg-gray-950 dark:border-white'
-                                                    : 'border-gray-300 bg-white dark:bg-gray-950 dark:border-gray-600'
+                                                    ? 'border-primary bg-primary text-primary-foreground'
+                                                    : 'border-border bg-background'
                                             }
                                         `}>
                                             {isCancelledStep ? (
                                                 <Icon className="h-4 w-4 text-white" />
                                             ) : isPast && !isCurrent ? (
-                                                <Check className="h-4 w-4 text-gray-900 dark:text-white" />
+                                                <Check className="h-4 w-4 text-primary-foreground" />
                                             ) : (
-                                                <Icon className={`h-4 w-4 ${isPast ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`} />
+                                                <Icon className={`h-4 w-4 ${isPast ? 'text-primary-foreground' : 'text-muted-foreground'}`} />
                                             )}
                                         </div>
                                         <span className={`
@@ -433,14 +430,14 @@ export default function OrderConfirmation({ order: initialOrder }: OrderConfirma
                                             ${isCancelledStep
                                                 ? 'font-medium text-red-600 dark:text-red-400'
                                                 : isPast
-                                                    ? 'font-medium text-gray-900 dark:text-white'
-                                                    : 'text-gray-400'}
+                                                    ? 'font-medium text-foreground'
+                                                    : 'text-muted-foreground'}
                                         `}>
                                             {step.label}
                                         </span>
                                         {/* Timestamp */}
                                         {stepTime && (
-                                            <span className="text-[10px] text-gray-400 mt-0.5">
+                                            <span className="text-[10px] text-muted-foreground mt-0.5">
                                                 {new Date(stepTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                                             </span>
                                         )}
@@ -453,19 +450,19 @@ export default function OrderConfirmation({ order: initialOrder }: OrderConfirma
 
                 {/* Pickup/Delivery Address */}
                 {isPickup && restaurant ? (
-                    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-                        <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2">
-                            <Store className="h-4 w-4 text-gray-500" />
-                            <span className="font-medium text-sm text-gray-900 dark:text-white">Pickup Location</span>
+                    <div className="bg-card/70 rounded-2xl border border-border/70 overflow-hidden">
+                        <div className="px-4 py-3 border-b border-border/70 flex items-center gap-2">
+                            <Store className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-medium text-sm text-foreground">Pickup Location</span>
                         </div>
                         <div className="p-4">
-                            <p className="font-semibold text-gray-900 dark:text-white">{restaurant.name}</p>
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{restaurantAddress}</p>
+                            <p className="font-semibold text-foreground">{restaurant.name}</p>
+                            <p className="text-sm text-muted-foreground mt-1">{restaurantAddress}</p>
                         </div>
 
                         {/* Merged OTP Section */}
                         {(order as any).pickup_otp && !isComplete && !isCancelled && (
-                            <div className="border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 p-6 text-center">
+                            <div className="border-t border-border/70 bg-muted/40 p-6 text-center">
                                 <p className="text-[10px] font-bold uppercase tracking-widest text-primary/70 mb-3">
                                     Pickup OTP
                                 </p>
@@ -484,18 +481,18 @@ export default function OrderConfirmation({ order: initialOrder }: OrderConfirma
                         )}
                     </div>
                 ) : order.customer_address && (
-                    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-                        <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2">
-                            <MapPin className="h-4 w-4 text-gray-500" />
-                            <span className="font-medium text-sm text-gray-900 dark:text-white">Delivery Address</span>
+                    <div className="bg-card/70 rounded-2xl border border-border/70 overflow-hidden">
+                        <div className="px-4 py-3 border-b border-border/70 flex items-center gap-2">
+                            <MapPin className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-medium text-sm text-foreground">Delivery Address</span>
                         </div>
                         <div className="p-4">
-                            <p className="font-semibold text-gray-900 dark:text-white">{order.customer_name}</p>
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{order.customer_address}</p>
+                            <p className="font-semibold text-foreground">{order.customer_name}</p>
+                            <p className="text-sm text-muted-foreground mt-1">{order.customer_address}</p>
                             {order.customer_phone && (
                                 <a
                                     href={`tel:${order.customer_phone}`}
-                                    className="inline-flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400 mt-2 hover:text-gray-900 dark:hover:text-white"
+                                    className="mt-2 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
                                 >
                                     <Phone className="h-3.5 w-3.5" />
                                     {order.customer_phone}
@@ -506,21 +503,21 @@ export default function OrderConfirmation({ order: initialOrder }: OrderConfirma
                 )}
 
                 {/* Order Items */}
-                <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-                    <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2">
-                        <Package className="h-4 w-4 text-gray-500" />
-                        <span className="font-medium text-sm text-gray-900 dark:text-white">Order Items</span>
+                <div className="bg-card/70 rounded-2xl border border-border/70 overflow-hidden">
+                    <div className="px-4 py-3 border-b border-border/70 flex items-center gap-2">
+                        <Package className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium text-sm text-foreground">Order Items</span>
                     </div>
-                    <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                    <div className="divide-y divide-border/70">
                         {order.order_items.map((item) => (
                             <div key={item.id} className="px-4 py-3 flex justify-between items-start">
                                 <div className="flex-1">
-                                    <p className="text-sm font-medium text-gray-900 dark:text-white">{item.name}</p>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    <p className="text-sm font-medium text-foreground">{item.name}</p>
+                                    <p className="text-xs text-muted-foreground">
                                         {item.quantity} × ₹{item.price}
                                     </p>
                                 </div>
-                                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                <p className="text-sm font-medium text-foreground">
                                     ₹{(item.price * item.quantity).toFixed(0)}
                                 </p>
                             </div>
@@ -529,59 +526,59 @@ export default function OrderConfirmation({ order: initialOrder }: OrderConfirma
                 </div>
 
                 {/* Bill Summary */}
-                <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-                    <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2">
+                <div className="bg-card/70 rounded-2xl border border-border/70 overflow-hidden">
+                    <div className="px-4 py-3 border-b border-border/70 flex items-center gap-2">
                         {order.payment_method === 'cod' ? (
-                            <Banknote className="h-4 w-4 text-gray-500" />
+                            <Banknote className="h-4 w-4 text-muted-foreground" />
                         ) : (
-                            <CreditCard className="h-4 w-4 text-gray-500" />
+                            <CreditCard className="h-4 w-4 text-muted-foreground" />
                         )}
-                        <span className="font-medium text-sm text-gray-900 dark:text-white">Payment</span>
+                        <span className="font-medium text-sm text-foreground">Payment</span>
                     </div>
                     <div className="p-4 space-y-2">
                         <div className="flex justify-between text-sm">
-                            <span className="text-gray-500 dark:text-gray-400">Subtotal</span>
-                            <span className="text-gray-900 dark:text-white">₹{order.items_total.toFixed(0)}</span>
+                            <span className="text-muted-foreground">Subtotal</span>
+                            <span className="text-foreground">₹{order.items_total.toFixed(0)}</span>
                         </div>
                         {order.delivery_fee > 0 && (
                             <div className="flex justify-between text-sm">
-                                <span className="text-gray-500 dark:text-gray-400">Delivery Fee</span>
-                                <span className="text-gray-900 dark:text-white">₹{order.delivery_fee.toFixed(0)}</span>
+                                <span className="text-muted-foreground">Delivery Fee</span>
+                                <span className="text-foreground">₹{order.delivery_fee.toFixed(0)}</span>
                             </div>
                         )}
                         {order.tax_amount > 0 && (
                             <div className="flex justify-between text-sm">
-                                <span className="text-gray-500 dark:text-gray-400">Tax</span>
-                                <span className="text-gray-900 dark:text-white">₹{order.tax_amount.toFixed(0)}</span>
+                                <span className="text-muted-foreground">Tax</span>
+                                <span className="text-foreground">₹{order.tax_amount.toFixed(0)}</span>
                             </div>
                         )}
-                        <div className="flex justify-between pt-2 border-t border-gray-100 dark:border-gray-800">
-                            <span className="font-medium text-gray-900 dark:text-white">Total</span>
-                            <span className="font-bold text-gray-900 dark:text-white">₹{order.total_amount.toFixed(0)}</span>
+                        <div className="flex justify-between pt-2 border-t border-border/70">
+                            <span className="font-medium text-foreground">Total</span>
+                            <span className="font-bold text-foreground">₹{order.total_amount.toFixed(0)}</span>
                         </div>
 
-                        <div className="pt-3 mt-2 border-t border-gray-100 dark:border-gray-800">
+                        <div className="pt-3 mt-2 border-t border-border/70">
                             {order.payment_method === 'cod' ? (
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                        <p className="text-sm font-medium text-foreground">
                                             Cash on {isPickup ? 'Pickup' : 'Delivery'}
                                         </p>
-                                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                                        <p className="text-xs text-muted-foreground">
                                             Pay when you receive
                                         </p>
                                     </div>
-                                    <span className="font-bold text-gray-900 dark:text-white">₹{order.total_amount.toFixed(0)}</span>
+                                    <span className="font-bold text-foreground">₹{order.total_amount.toFixed(0)}</span>
                                 </div>
                             ) : (
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <p className="text-sm font-medium text-gray-900 dark:text-white">Paid Online</p>
-                                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                                        <p className="text-sm font-medium text-foreground">Paid Online</p>
+                                        <p className="text-xs text-muted-foreground">
                                             via {order.payment_method.toUpperCase()}
                                         </p>
                                     </div>
-                                    <CheckCircle2 className="h-5 w-5 text-green-500" />
+                                    <CheckCircle2 className="h-5 w-5 text-primary" />
                                 </div>
                             )}
                         </div>
@@ -590,20 +587,20 @@ export default function OrderConfirmation({ order: initialOrder }: OrderConfirma
 
                 {/* Notes */}
                 {order.notes && (
-                    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-                        <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2">
-                            <Package className="h-4 w-4 text-gray-500" />
-                            <span className="font-medium text-sm text-gray-900 dark:text-white">Note</span>
+                    <div className="bg-card/70 rounded-2xl border border-border/70 overflow-hidden">
+                        <div className="px-4 py-3 border-b border-border/70 flex items-center gap-2">
+                            <Package className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-medium text-sm text-foreground">Note</span>
                         </div>
                         <div className="p-4">
-                            <p className="text-sm text-gray-700 dark:text-gray-300">{order.notes}</p>
+                            <p className="text-sm text-foreground/80">{order.notes}</p>
                         </div>
                     </div>
                 )}
 
                 {/* Back Button */}
-                <Button asChild variant="outline" className="w-full h-11 rounded-xl">
-                    <Link href="/">Back to Home</Link>
+                <Button asChild variant="outline" className="h-11 w-full rounded-xl">
+                    <Link href="/customer/orders">View all orders</Link>
                 </Button>
             </div>
         </div >
