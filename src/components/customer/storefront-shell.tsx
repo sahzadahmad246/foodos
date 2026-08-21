@@ -131,13 +131,13 @@ export function StorefrontShell({
                 : 'pb-28'
 
     return (
-        <div className="mx-auto min-h-screen w-full max-w-lg border-x border-border/60 bg-background text-foreground md:shadow-[0_0_0_1px_hsl(var(--border)),0_18px_45px_-20px_rgba(0,0,0,0.45)]">
+        <div className="mx-auto min-h-screen w-full max-w-lg bg-background text-foreground md:border-x md:border-border/60 md:shadow-[0_0_0_1px_hsl(var(--border)),0_18px_45px_-20px_rgba(0,0,0,0.45)]">
             <LocationInitializer userId={user?.id} />
             {showHeader ? <CustomerHeader restaurant={restaurant} user={user} /> : null}
 
             {restaurant.is_online === false && (
                 <div className="border-b border-amber-500/30 bg-amber-500/10">
-                    <div className="mx-auto w-full px-4 py-2 text-sm text-amber-200">
+                    <div className="mx-auto w-full px-3 py-2 text-sm text-amber-700 dark:text-amber-200">
                         This restaurant is currently offline. You can browse the menu, but orders are temporarily disabled.
                     </div>
                 </div>
@@ -146,10 +146,10 @@ export function StorefrontShell({
             <div className={bottomPad}>{children}</div>
 
             {currentActiveOrder && (
-                <div className={`fixed left-1/2 z-40 w-full max-w-lg -translate-x-1/2 px-4 ${cartItemCount > 0 ? 'bottom-36' : 'bottom-20'}`}>
+                <div className={`fixed left-1/2 z-40 w-full max-w-lg -translate-x-1/2 px-3 ${cartItemCount > 0 ? 'bottom-36' : 'bottom-20'}`}>
                     <Link
                         href={`/orders/${currentActiveOrder.id}`}
-                        className="mx-auto flex h-14 w-full items-center justify-between rounded-2xl bg-primary px-4 text-primary-foreground shadow-lg"
+                        className="mx-auto flex h-14 w-full items-center justify-between rounded-2xl bg-primary px-3.5 text-primary-foreground shadow-lg"
                     >
                         <div className="min-w-0">
                             <p className="truncate text-sm font-medium">{activeOrderStatusLabel}</p>
@@ -176,7 +176,7 @@ export function StorefrontShell({
             )}
 
             {cartItemCount > 0 && (
-                <div className="fixed bottom-20 left-1/2 z-40 w-full max-w-lg -translate-x-1/2 px-4">
+                <div className="fixed bottom-20 left-1/2 z-40 w-full max-w-lg -translate-x-1/2 px-3">
                     <button
                         type="button"
                         onClick={() => setIsCartOpen(true)}

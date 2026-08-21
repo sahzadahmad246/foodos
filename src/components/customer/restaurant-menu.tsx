@@ -220,12 +220,22 @@ export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItem
 
     useEffect(() => {
         if (!selectedCategory) return
-        setOpenCategoryIds((prev) => new Set(prev).add(selectedCategory))
+
+        const timeoutId = window.setTimeout(() => {
+            setOpenCategoryIds((prev) => new Set(prev).add(selectedCategory))
+        }, 0)
+
+        return () => window.clearTimeout(timeoutId)
     }, [selectedCategory])
 
     useEffect(() => {
         if (mode !== 'menu') return
-        setOpenCategoryIds(new Set(itemsByCategory.map(({ category }) => category.id)))
+
+        const timeoutId = window.setTimeout(() => {
+            setOpenCategoryIds(new Set(itemsByCategory.map(({ category }) => category.id)))
+        }, 0)
+
+        return () => window.clearTimeout(timeoutId)
     }, [mode, itemsByCategory])
 
     return (
@@ -236,8 +246,8 @@ export function RestaurantMenu({ restaurant, categories, menuItems, buyAgainItem
             currentTab={mode}
             showHeader={mode === 'home'}
         >
-            <main className="mx-auto w-full px-4 pt-0">
-                <section className="sticky top-0 z-30 -mx-4 border-b border-border/70 bg-background/95 px-4 pb-3 pt-3 backdrop-blur">
+            <main className="mx-auto w-full px-3 pt-0">
+                <section className="sticky top-0 z-30 -mx-3 border-b border-border/70 bg-background/95 px-3 pb-3 pt-3 backdrop-blur">
                     <div className="flex items-center justify-between gap-2">
                         <p className="text-sm font-semibold">
                             {mode === 'home' ? "What's on your mind?" : mode === 'menu' ? 'Menu' : 'Buy again'}

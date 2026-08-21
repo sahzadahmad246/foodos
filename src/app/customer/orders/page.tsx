@@ -1,24 +1,40 @@
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import Link from "next/link"
-import { Box, Clock, ChevronRight, Store, MapPin } from "lucide-react"
+import { Box, ChevronRight, Package, Store } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { BackButton } from "@/components/customer/back-button"
 
 export const dynamic = "force-dynamic"
 
+interface OrderItem {
+    id?: string
+    name?: string | null
+    quantity?: number | null
+}
+
+interface CustomerOrder {
+    id: string
+    order_number?: string | null
+    status: string
+    created_at: string
+    total_amount: number
+    restaurant?: {
+        name?: string | null
+        logo_url?: string | null
+    } | null
+    order_items?: OrderItem[] | null
+}
+
 export default async function CustomerOrdersPage() {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
-        redirect('/login')
+        redirect('/login?redirect=/customer/orders')
     }
 
-    console.log('Fetching orders for user:', user.id)
-
-    // Fetch user's orders by user_id
     const { data: orders, error } = await supabase
         .from('orders')
         .select(`
@@ -29,96 +45,109 @@ export default async function CustomerOrdersPage() {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
 
-    console.log('Orders found:', orders?.length || 0, 'Error:', error)
-
     if (error) {
         console.error('Error fetching orders:', error)
     }
 
+    const customerOrders = (orders || []) as CustomerOrder[]
+
     const STATUS_COLORS: Record<string, string> = {
-        pending: 'bg-yellow-500/10 text-yellow-600 border-yellow-200',
-        confirmed: 'bg-blue-500/10 text-blue-600 border-blue-200',
-        preparing: 'bg-purple-500/10 text-purple-600 border-purple-200',
-        ready: 'bg-green-500/10 text-green-600 border-green-200',
-        out_for_delivery: 'bg-orange-500/10 text-orange-600 border-orange-200',
-        delivered: 'bg-green-500/10 text-green-600 border-green-200',
-        cancelled: 'bg-red-500/10 text-red-600 border-red-200',
+        pending: 'border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-200',
+        confirmed: 'border-sky-500/35 bg-sky-500/10 text-sky-700 dark:text-sky-200',
+        preparing: 'border-violet-500/35 bg-violet-500/10 text-violet-700 dark:text-violet-200',
+        ready: 'border-emerald-500/35 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200',
+        out_for_delivery: 'border-orange-500/35 bg-orange-500/10 text-orange-700 dark:text-orange-200',
+        delivered: 'border-emerald-500/35 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200',
+        cancelled: 'border-red-500/35 bg-red-500/10 text-red-700 dark:text-red-200',
     }
 
     return (
-        <div className="min-h-screen bg-muted/40 pb-20">
-            <div className="bg-background border-b sticky top-0 z-10">
-                <div className="container max-w-lg mx-auto px-4 py-4 flex items-center gap-4">
-                    <BackButton />
-                    <h1 className="font-semibold text-lg">My Orders</h1>
+        <div className="mx-auto min-h-screen w-full max-w-lg bg-background pb-10 text-foreground md:border-x md:border-border/60 md:shadow-[0_0_0_1px_hsl(var(--border)),0_18px_45px_-20px_rgba(0,0,0,0.45)]">
+            <header className="sticky top-0 z-20 border-b border-border/70 bg-background/95 backdrop-blur">
+                <div className="flex items-center gap-3 px-3 py-3">
+                    <BackButton className="h-9 w-9 border border-border" />
+                    <div className="min-w-0 flex-1">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">History</p>
+                        <h1 className="truncate text-lg font-semibold">My orders</h1>
+                    </div>
                 </div>
-            </div>
+            </header>
 
-            <div className="container max-w-lg mx-auto px-4 py-6 space-y-4">
-                {!orders || orders.length === 0 ? (
-                    <div className="text-center py-20">
-                        <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                            <Box className="h-10 w-10 text-muted-foreground" />
+            <main className="space-y-3 px-3 py-4">
+                {customerOrders.length === 0 ? (
+                    <div className="rounded-2xl border border-border/70 bg-card px-5 py-14 text-center">
+                        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-muted text-primary">
+                            <Box className="h-8 w-8" />
                         </div>
-                        <h2 className="text-xl font-semibold mb-2">No orders yet</h2>
-                        <p className="text-muted-foreground mb-6">
-                            Start ordering delicious food from your favorite restaurants!
+                        <h2 className="text-lg font-bold">No orders yet</h2>
+                        <p className="mx-auto mt-1 max-w-xs text-sm leading-relaxed text-muted-foreground">
+                            Orders you place from restaurant pages will appear here.
                         </p>
-                        <Button asChild>
-                            <Link href="/">Browse Restaurants</Link>
+                        <Button asChild className="mt-5 h-10 rounded-xl">
+                            <Link href="/">Browse restaurants</Link>
                         </Button>
                     </div>
                 ) : (
-                    orders.map((order) => (
+                    customerOrders.map((order) => {
+                        const itemsSummary = order.order_items?.length
+                            ? order.order_items
+                                .map((item) => `${item.quantity || 1} x ${item.name || 'Item'}`)
+                                .join(', ')
+                            : 'Order items'
+
+                        return (
                         <Link
                             href={`/orders/${order.id}`}
                             key={order.id}
-                            className="block bg-card border rounded-xl overflow-hidden hover:shadow-md transition-shadow"
+                            className="block overflow-hidden rounded-2xl border border-border/70 bg-card transition hover:border-primary/35 hover:bg-muted/30"
                         >
-                            <div className="p-4">
-                                {/* Header */}
-                                <div className="flex justify-between items-start mb-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                                            <Store className="h-5 w-5 text-primary" />
+                            <div className="p-3">
+                                <div className="mb-3 flex items-start justify-between gap-3">
+                                    <div className="flex min-w-0 items-center gap-3">
+                                        <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-primary/15 text-primary">
+                                            {order.restaurant?.logo_url ? (
+                                                // eslint-disable-next-line @next/next/no-img-element
+                                                <img src={order.restaurant.logo_url} alt="" className="h-full w-full object-cover" />
+                                            ) : (
+                                                <Store className="h-5 w-5" />
+                                            )}
                                         </div>
-                                        <div>
-                                            <h3 className="font-semibold">
+                                        <div className="min-w-0">
+                                            <h3 className="truncate text-sm font-bold">
                                                 {order.restaurant?.name || 'Restaurant'}
                                             </h3>
-                                            <p className="text-xs text-muted-foreground">
+                                            <p className="mt-0.5 text-xs text-muted-foreground">
                                                 {new Date(order.created_at).toLocaleString('en-IN', {
                                                     day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
                                                 })}
                                             </p>
                                         </div>
                                     </div>
-                                    <Badge variant="outline" className={STATUS_COLORS[order.status] || 'bg-gray-100'}>
+                                    <Badge variant="outline" className={`shrink-0 rounded-full text-[10px] capitalize ${STATUS_COLORS[order.status] || 'border-border bg-muted text-muted-foreground'}`}>
                                         {order.status.replace(/_/g, ' ')}
                                     </Badge>
                                 </div>
 
-                                {/* Items Summary */}
-                                <div className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                                    {order.order_items?.map((item: any) =>
-                                        `${item.quantity} × ${item.name}`
-                                    ).join(', ')}
+                                <div className="mb-3 flex items-start gap-2 rounded-xl bg-muted/45 px-3 py-2 text-xs text-muted-foreground">
+                                    <Package className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+                                    <span className="line-clamp-2">{itemsSummary}</span>
                                 </div>
 
-                                {/* Footer */}
-                                <div className="flex items-center justify-between pt-3 border-t text-sm">
-                                    <div className="font-semibold">
-                                        ₹{order.total_amount.toFixed(0)}
+                                <div className="flex items-center justify-between border-t border-border/70 pt-3 text-sm">
+                                    <div>
+                                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Total</p>
+                                        <p className="font-bold">₹{Number(order.total_amount || 0).toFixed(0)}</p>
                                     </div>
-                                    <div className="flex items-center text-primary font-medium">
-                                        View Details <ChevronRight className="h-4 w-4 ml-1" />
+                                    <div className="flex items-center text-xs font-semibold text-primary">
+                                        View details <ChevronRight className="ml-1 h-4 w-4" />
                                     </div>
                                 </div>
                             </div>
                         </Link>
-                    ))
+                        )
+                    })
                 )}
-            </div>
+            </main>
         </div>
     )
 }
